@@ -26,7 +26,8 @@ const state = {
     editClient: null,
     editField: null,
     editJob: null,
-    notice: ""
+    notice: "",
+    drafts: { client: null, field: null, job: null }
   },
   capacity: {
     month: 2,
@@ -163,6 +164,7 @@ const storageKey = "contadini-volanti-operativo-v1";
 async function boot() {
   await loadAppData();
   ensureBookingLinks();
+  ensureAdminDrafts();
   document.querySelectorAll("[data-icon]").forEach((node) => {
     node.innerHTML = icons[node.dataset.icon] || "";
   });
@@ -195,11 +197,20 @@ function bindEvents() {
   $("#operationForm").addEventListener("submit", saveOperation);
   $("#drawerBackdrop").addEventListener("click", closeDrawer);
   document.addEventListener("submit", (event) => {
-    if (event.target?.id === "bookingForm") saveBooking(event);
-    if (event.target?.id === "adminClientForm") saveClient(event);
-    if (event.target?.id === "adminFieldForm") saveField(event);
-    if (event.target?.id === "adminJobForm") saveAdminJob(event);
-    if (event.target?.id === "permitForm") savePermit(event);
+    if (event.defaultPrevented) return;
+    const handlers = {
+      bookingForm: saveBooking,
+      adminClientForm: saveClient,
+      adminFieldForm: saveField,
+      adminJobForm: saveAdminJob,
+      permitForm: savePermit
+    };
+    const handler = handlers[event.target?.id];
+    if (handler) {
+      handler(event);
+      return;
+    }
+    event.preventDefault();
   });
   document.addEventListener("click", (event) => {
     const exportButton = event.target.closest?.(".js-export-ai");
@@ -235,6 +246,7 @@ function bindEvents() {
     if (cancelAdminEdit) cancelAdminEdit.dataset.target && cancelAdminEditing(cancelAdminEdit.dataset.target);
   });
   document.addEventListener("input", (event) => {
+    captureAdminDraft(event.target);
     if (event.target?.id === "fleetT100") {
       updateFleetFromInput(event.target);
     }
@@ -242,6 +254,7 @@ function bindEvents() {
     if (event.target?.closest?.("#quoteForm")) updateQuotePreview();
   });
   document.addEventListener("change", (event) => {
+    captureAdminDraft(event.target);
     if (event.target?.id === "fleetT100") {
       updateFleetFromInput(event.target, { persist: true });
     }
@@ -262,8 +275,49 @@ function bindEvents() {
     if (event.target?.id === "restoreBackupInput") restoreBackupFromFile(event.target.files?.[0]);
   });
   document.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" && event.target?.closest?.("form") && event.target.matches?.("input, select")) {
+      event.preventDefault();
+    }
     if (event.key === "Escape") closeDrawer();
   });
+}
+
+function emptyAdminDrafts() {
+  return { client: null, field: null, job: null };
+}
+
+function ensureAdminDrafts() {
+  if (!state.admin.drafts) state.admin.drafts = emptyAdminDrafts();
+}
+
+function adminFormKind(form) {
+  return {
+    adminClientForm: "client",
+    adminFieldForm: "field",
+    adminJobForm: "job"
+  }[form?.id];
+}
+
+function captureAdminDraft(target) {
+  const form = target?.closest?.(".admin-form");
+  const kind = adminFormKind(form);
+  if (!kind) return;
+  ensureAdminDrafts();
+  state.admin.drafts[kind] = Object.fromEntries(new FormData(form).entries());
+}
+
+function getAdminDraft(kind) {
+  ensureAdminDrafts();
+  return state.admin.drafts[kind] || {};
+}
+
+function clearAdminDraft(kind) {
+  ensureAdminDrafts();
+  state.admin.drafts[kind] = null;
+}
+
+function clearAllAdminDrafts() {
+  state.admin.drafts = emptyAdminDrafts();
 }
 
 function updateFleetFromInput(input, { persist = false } = {}) {
@@ -546,6 +600,7 @@ function renderCapacity() {
 }
 
 function renderBackend() {
+  ensureAdminDrafts();
   workspace.innerHTML = `
     <section class="panel">
       <div class="panel-head">
@@ -604,6 +659,8 @@ function adminNotice() {
 
 function renderAdminClients() {
   const editing = farmers.find((client) => client.name === state.admin.editClient) || null;
+  const values = { ...(editing || {}), ...getAdminDraft("client") };
+  const originalName = values.originalName ?? editing?.name ?? "";
   const rows = farmers.map(adminClientRow).join("");
   return `
     <div class="admin-layout">
@@ -612,20 +669,20 @@ function renderAdminClients() {
           <p class="spaced-label">${editing ? "Modifica cliente" : "Nuovo cliente"}</p>
           <h3>${editing ? escapeHtml(editing.name) : "Cartella cliente"}</h3>
         </div>
-        <input name="originalName" type="hidden" value="${attr(editing?.name)}" />
-        <label>Ragione sociale <input name="name" required value="${attr(editing?.name)}" placeholder="Azienda Agricola Rossi" /></label>
-        <label>Referente <input name="contact" required value="${attr(editing?.contact)}" placeholder="Nome referente" /></label>
-        <label>Comune <input name="city" required value="${attr(editing?.city)}" placeholder="Comune" /></label>
-        <label>Telefono <input name="phone" value="${attr(editing?.phone)}" placeholder="+39 ..." /></label>
-        <label>Email <input name="email" type="email" value="${attr(editing?.email)}" placeholder="email@azienda.it" /></label>
-        <label>Partita IVA <input name="vat" value="${attr(editing?.vat)}" placeholder="IT ..." /></label>
+        <input name="originalName" type="hidden" value="${attr(originalName)}" />
+        <label>Ragione sociale <input name="name" required value="${attr(values.name)}" placeholder="Azienda Agricola Rossi" /></label>
+        <label>Referente <input name="contact" required value="${attr(values.contact)}" placeholder="Nome referente" /></label>
+        <label>Comune <input name="city" required value="${attr(values.city)}" placeholder="Comune" /></label>
+        <label>Telefono <input name="phone" value="${attr(values.phone)}" placeholder="+39 ..." /></label>
+        <label>Email <input name="email" type="email" value="${attr(values.email)}" placeholder="email@azienda.it" /></label>
+        <label>Partita IVA <input name="vat" value="${attr(values.vat)}" placeholder="IT ..." /></label>
         <label>Canale preferito
-          <select name="channel">${selectOptions(["WhatsApp", "Email", "Telefono"], editing?.channel || "WhatsApp")}</select>
+          <select name="channel">${selectOptions(["WhatsApp", "Email", "Telefono"], values.channel || "WhatsApp")}</select>
         </label>
         <label>Stato
-          <select name="status">${selectOptions(["Attivo", "In attesa", "Archiviato"], editing?.status || "Attivo")}</select>
+          <select name="status">${selectOptions(["Attivo", "In attesa", "Archiviato"], values.status || "Attivo")}</select>
         </label>
-        <label class="wide">Note <textarea name="note" rows="3" placeholder="Preferenze, vincoli, contatti aggiuntivi">${escapeHtml(editing?.note || "")}</textarea></label>
+        <label class="wide">Note <textarea name="note" rows="3" placeholder="Preferenze, vincoli, contatti aggiuntivi">${escapeHtml(values.note || "")}</textarea></label>
         <div class="button-row">
           <button class="btn primary" type="submit">${editing ? "Salva modifiche" : "Crea cliente"}</button>
           ${editing ? '<button class="btn ghost js-cancel-admin-edit" data-target="client" type="button">Annulla modifica</button>' : ""}
@@ -641,6 +698,7 @@ function renderAdminClients() {
 
 function renderAdminFields() {
   const editing = fields.find((field) => field.id === state.admin.editField) || null;
+  const values = { ...(editing || {}), ...getAdminDraft("field") };
   return `
     <div class="admin-layout">
       <form class="admin-form" id="adminFieldForm" novalidate>
@@ -648,26 +706,26 @@ function renderAdminFields() {
           <p class="spaced-label">${editing ? "Modifica campo" : "Nuovo campo"}</p>
           <h3>${editing ? `${escapeHtml(editing.id)} / ${escapeHtml(editing.name)}` : "Appezzamento agricolo"}</h3>
         </div>
-        <input name="id" type="hidden" value="${attr(editing?.id)}" />
-        <label>Codice campo <input value="${attr(editing?.id || "Automatico")}" disabled /></label>
-        <label>Nome campo <input name="name" required value="${attr(editing?.name)}" placeholder="Vigneto Collina Est" /></label>
+        <input name="id" type="hidden" value="${attr(values.id)}" />
+        <label>Codice campo <input value="${attr(values.id || "Automatico")}" disabled /></label>
+        <label>Nome campo <input name="name" required value="${attr(values.name)}" placeholder="Vigneto Collina Est" /></label>
         <label>Cliente collegato
-          <select name="client" required>${selectOptions(farmers.map((client) => client.name), editing?.client || farmers[0]?.name || "")}</select>
+          <select name="client" required>${selectOptions(farmers.map((client) => client.name), values.client || farmers[0]?.name || "")}</select>
         </label>
-        <label>Referente / proprietario <input name="owner" value="${attr(editing?.owner)}" placeholder="Referente operativo" /></label>
-        <label>Comune <input name="city" required value="${attr(editing?.city)}" placeholder="Comune" /></label>
+        <label>Referente / proprietario <input name="owner" value="${attr(values.owner)}" placeholder="Referente operativo" /></label>
+        <label>Comune <input name="city" required value="${attr(values.city)}" placeholder="Comune" /></label>
         <label>Coltura
-          <select name="crop" required>${selectOptions(Object.values(cropLabels), editing?.crop || "Mais")}</select>
+          <select name="crop" required>${selectOptions(Object.values(cropLabels), values.crop || "Mais")}</select>
         </label>
-        <label>Ettari <input name="hectares" type="number" min="0" step="0.1" required value="${attr(editing?.hectares)}" placeholder="0" /></label>
+        <label>Ettari <input name="hectares" type="number" min="0" step="0.1" required value="${attr(values.hectares)}" placeholder="0" /></label>
         <label>Stato autorizzazione
-          <select name="auth">${selectOptions(["Da verificare", "In verifica", "Valida", "Da rinnovare", "Urgente"], editing?.auth || "Da verificare")}</select>
+          <select name="auth">${selectOptions(["Da verificare", "In verifica", "Valida", "Da rinnovare", "Urgente"], values.auth || "Da verificare")}</select>
         </label>
         <label>Stato VRA
-          <select name="vra">${selectOptions(["Non avviata", "Bozza", "In analisi", "Pronta", "Mappa disponibile"], editing?.vra || "Non avviata")}</select>
+          <select name="vra">${selectOptions(["Non avviata", "Bozza", "In analisi", "Pronta", "Mappa disponibile"], values.vra || "Non avviata")}</select>
         </label>
-        <label class="wide">Reminder <input name="reminder" value="${attr(editing?.reminder)}" placeholder="Prima operazione da pianificare" /></label>
-        <label class="wide">Note operative <textarea name="note" rows="3" placeholder="Vincoli, accessi, ostacoli, preferenze operative">${escapeHtml(editing?.note || "")}</textarea></label>
+        <label class="wide">Reminder <input name="reminder" value="${attr(values.reminder)}" placeholder="Prima operazione da pianificare" /></label>
+        <label class="wide">Note operative <textarea name="note" rows="3" placeholder="Vincoli, accessi, ostacoli, preferenze operative">${escapeHtml(values.note || "")}</textarea></label>
         <div class="button-row">
           <button class="btn primary" type="submit">${editing ? "Salva modifiche" : "Crea campo"}</button>
           ${editing ? '<button class="btn ghost js-cancel-admin-edit" data-target="field" type="button">Annulla modifica</button>' : ""}
@@ -683,8 +741,9 @@ function renderAdminFields() {
 
 function renderAdminJobs() {
   const editing = bookings.find((booking) => booking.id === state.admin.editJob) || null;
-  const selectedField = fields.find((field) => field.name === editing?.field);
-  const defaultCrop = editing?.crop || cropKeyFromLabel(selectedField?.crop) || "mais";
+  const values = { ...(editing || {}), ...getAdminDraft("job") };
+  const selectedField = fields.find((field) => field.name === values.field);
+  const defaultCrop = values.crop || cropKeyFromLabel(selectedField?.crop) || "mais";
   return `
     <div class="fleet-panel">
       <div>
@@ -703,28 +762,28 @@ function renderAdminJobs() {
           <p class="spaced-label">${editing ? "Modifica lavoro" : "Nuovo lavoro"}</p>
           <h3>${editing ? `${escapeHtml(editing.id)} / ${escapeHtml(editing.field)}` : "Prenotazione operativa"}</h3>
         </div>
-        <input name="id" type="hidden" value="${attr(editing?.id)}" />
-        <label>Codice lavoro <input value="${attr(editing?.id || "Automatico")}" disabled /></label>
-        <label>Data <input name="date" type="date" required value="${attr(editing?.date || todayIso())}" /></label>
+        <input name="id" type="hidden" value="${attr(values.id)}" />
+        <label>Codice lavoro <input value="${attr(values.id || "Automatico")}" disabled /></label>
+        <label>Data <input name="date" type="date" required value="${attr(values.date || todayIso())}" /></label>
         <label>Cliente
-          <select name="client" required>${selectOptions(farmers.map((client) => client.name), editing?.client || farmers[0]?.name || "")}</select>
+          <select name="client" required>${selectOptions(farmers.map((client) => client.name), values.client || farmers[0]?.name || "")}</select>
         </label>
         <label>Campo
-          <select name="field" required>${selectOptions(fields.map((field) => field.name), editing?.field || fields[0]?.name || "")}</select>
+          <select name="field" required>${selectOptions(fields.map((field) => field.name), values.field || fields[0]?.name || "")}</select>
         </label>
         <label>Coltura
           <select name="crop" required>${selectOptions(Object.entries(cropLabels).map(([key, label]) => [key, label]), defaultCrop)}</select>
         </label>
         <label>Servizio
-          <select name="service" required>${selectOptions(Object.entries(operationLabels).map(([key, label]) => [key, label]), editing?.service || "lancio-insetti")}</select>
+          <select name="service" required>${selectOptions(Object.entries(operationLabels).map(([key, label]) => [key, label]), values.service || "lancio-insetti")}</select>
         </label>
-        <label>Difficoltà terreno 1-10 <input name="terrainLevel" type="number" min="1" max="10" step="1" value="${attr(editing?.terrainLevel || 1)}" /></label>
-        <label>Ettari <input name="hectares" type="number" min="0" step="0.1" required value="${attr(editing?.hectares)}" placeholder="0" /></label>
-        <label>Drone assegnato <input name="drone" value="${attr(editing?.drone || "T100-01")}" /></label>
+        <label>Difficoltà terreno 1-10 <input name="terrainLevel" type="number" min="1" max="10" step="1" value="${attr(values.terrainLevel || 1)}" /></label>
+        <label>Ettari <input name="hectares" type="number" min="0" step="0.1" required value="${attr(values.hectares)}" placeholder="0" /></label>
+        <label>Drone assegnato <input name="drone" value="${attr(values.drone || "T100-01")}" /></label>
         <label>Stato
-          <select name="status">${selectOptions(["Preventivo", "Venduto", "Pianificato", "In corso", "Completato", "Annullato"], displayStatus(editing?.status || "Pianificato"))}</select>
+          <select name="status">${selectOptions(["Preventivo", "Venduto", "Pianificato", "In corso", "Completato", "Annullato"], displayStatus(values.status || "Pianificato"))}</select>
         </label>
-        <label class="wide">Note <textarea name="note" rows="3" placeholder="Note operative, vincoli, materiale da preparare">${escapeHtml(editing?.note || "")}</textarea></label>
+        <label class="wide">Note <textarea name="note" rows="3" placeholder="Note operative, vincoli, materiale da preparare">${escapeHtml(values.note || "")}</textarea></label>
         <p class="form-note">La capienza usa coltura + servizio + difficoltà terreno. Se il lavoro viene salvato, missione, report e reminder collegati vengono aggiornati.</p>
         <div class="button-row">
           <button class="btn primary" type="submit">${editing ? "Salva modifiche" : "Crea lavoro"}</button>
@@ -1437,7 +1496,7 @@ function replaceArray(target, next) {
 function clearDemoData() {
   if (!confirm("Vuoi svuotare i dati demo e iniziare da zero?")) return;
   [fields, permits, vraMaps, farmers, reminders, bookings, missions, missionReports, state.operations].forEach((collection) => collection.splice(0, collection.length));
-  state.admin = { tab: "clients", editClient: null, editField: null, editJob: null, notice: "Dati demo svuotati. Puoi iniziare da zero." };
+  state.admin = { tab: "clients", editClient: null, editField: null, editJob: null, notice: "Dati demo svuotati. Puoi iniziare da zero.", drafts: emptyAdminDrafts() };
   localStorage.removeItem(storageKey);
   saveAppData();
   renderFilterOptions();
@@ -1912,6 +1971,7 @@ function switchAdminTab(tab) {
   state.admin.editClient = null;
   state.admin.editField = null;
   state.admin.editJob = null;
+  clearAllAdminDrafts();
   render();
 }
 
@@ -1923,22 +1983,26 @@ function cancelAdminEditing(target) {
   if (target === "client") state.admin.editClient = null;
   if (target === "field") state.admin.editField = null;
   if (target === "job") state.admin.editJob = null;
+  clearAdminDraft(target);
   render();
 }
 
 function startEditClient(name) {
+  clearAdminDraft("client");
   state.admin.tab = "clients";
   state.admin.editClient = name;
   render();
 }
 
 function startEditField(id) {
+  clearAdminDraft("field");
   state.admin.tab = "fields";
   state.admin.editField = id;
   render();
 }
 
 function startEditJob(id) {
+  clearAdminDraft("job");
   state.admin.tab = "jobs";
   state.admin.editJob = id;
   render();
@@ -1984,6 +2048,7 @@ function saveClient(event) {
     setAdminNotice(`Cliente "${name}" creato.`);
   }
   state.admin.editClient = null;
+  clearAdminDraft("client");
   refreshFarmerCrops();
   saveAppData();
   renderFilterOptions();
@@ -2031,6 +2096,7 @@ function saveField(event) {
     setAdminNotice(`Campo "${name}" creato.`);
   }
   state.admin.editField = null;
+  clearAdminDraft("field");
   refreshFarmerCrops();
   saveAppData();
   renderFilterOptions();
@@ -2083,6 +2149,7 @@ async function saveAdminJob(event) {
     setAdminNotice(`Lavoro ${booking.id} creato e salvato con missione, report e reminder. Lo trovi in Capienza su ${monthNames[state.capacity.month]} ${state.capacity.year}.`);
   }
   state.admin.editJob = null;
+  clearAdminDraft("job");
   await saveAppData();
   render();
 }
@@ -2107,6 +2174,7 @@ function deleteClientByName(name) {
   removeWhere(farmers, (item) => item.name === name);
   setAdminNotice(`Cliente "${name}" eliminato.`);
   state.admin.editClient = null;
+  clearAdminDraft("client");
   saveAppData();
   renderFilterOptions();
   render();
@@ -2132,6 +2200,7 @@ function deleteFieldById(id) {
   refreshFarmerCrops();
   setAdminNotice(`Campo "${field.name}" eliminato.`);
   state.admin.editField = null;
+  clearAdminDraft("field");
   saveAppData();
   renderFilterOptions();
   render();
@@ -2147,6 +2216,7 @@ function deleteJobById(id) {
   removeWhere(bookings, (item) => item.id === id);
   setAdminNotice(`Lavoro ${id} eliminato. Capienza ricalcolata.`);
   state.admin.editJob = null;
+  clearAdminDraft("job");
   saveAppData();
   render();
 }
