@@ -1,0 +1,7 @@
+services:
+  - type: web
+    runtime: node
+    name: contadini-volanti-gestionale
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
