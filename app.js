@@ -326,6 +326,7 @@ function syncTopbarControls() {
   if (searchBox) searchBox.hidden = !dashboardOnly;
   $("#filterToggle").hidden = !dashboardOnly;
   if (metrics) metrics.hidden = !dashboardOnly;
+  document.body.dataset.view = state.active;
 
   if (!dashboardOnly) {
     state.query = "";
@@ -1651,6 +1652,13 @@ function shiftCapacityMonth(delta) {
   render();
 }
 
+function focusCapacityOnDate(date) {
+  if (!date || !String(date).includes("-")) return;
+  const [year, month] = String(date).split("-");
+  state.capacity.year = Number(year);
+  state.capacity.month = Math.max(0, Math.min(11, Number(month) - 1));
+}
+
 function getBookingPreview() {
   const date = $("#bookingDate")?.value;
   const crop = $("#bookingCrop")?.value;
@@ -1759,7 +1767,7 @@ function saveOperation(event) {
   render();
 }
 
-function saveBooking(event) {
+async function saveBooking(event) {
   event.preventDefault();
   const data = Object.fromEntries(new FormData(event.target).entries());
   const hectares = Number(data.hectares || 0);
@@ -1804,6 +1812,8 @@ function saveBooking(event) {
     status: percent === remaining ? "Completato" : "Venduto"
   });
   addBookingCascade(booking, percent);
+  focusCapacityOnDate(booking.date);
+  await saveAppData();
   render();
 }
 
@@ -1833,7 +1843,6 @@ function addBookingCascade(booking, percent = bookingOccupancyPercent(booking)) 
   booking.missionId = mission.id;
   booking.reportId = report.id;
   booking.reminderId = reminder.id;
-  saveAppData();
 }
 
 function createReminderFromBooking(booking, percent = bookingOccupancyPercent(booking)) {
@@ -2014,7 +2023,7 @@ function saveField(event) {
   render();
 }
 
-function saveAdminJob(event) {
+async function saveAdminJob(event) {
   event.preventDefault();
   const data = Object.fromEntries(new FormData(event.target).entries());
   const id = cleanText(data.id);
@@ -2052,13 +2061,15 @@ function saveAdminJob(event) {
   if (existing) {
     Object.assign(existing, booking);
     syncBookingCascade(existing, percent);
-    setAdminNotice(`Lavoro ${existing.id} aggiornato. Capienza ricalcolata.`);
+    focusCapacityOnDate(existing.date);
+    setAdminNotice(`Lavoro ${existing.id} aggiornato e salvato. Capienza ricalcolata su ${monthNames[state.capacity.month]} ${state.capacity.year}.`);
   } else {
     addBookingCascade(booking, percent);
-    setAdminNotice(`Lavoro ${booking.id} creato con missione, report e reminder.`);
+    focusCapacityOnDate(booking.date);
+    setAdminNotice(`Lavoro ${booking.id} creato e salvato con missione, report e reminder. Lo trovi in Capienza su ${monthNames[state.capacity.month]} ${state.capacity.year}.`);
   }
   state.admin.editJob = null;
-  saveAppData();
+  await saveAppData();
   render();
 }
 
