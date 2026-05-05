@@ -290,7 +290,6 @@ function fillSelect(node, options, selected) {
 }
 
 function render() {
-  renderMetrics();
   const views = {
     dashboard: renderDashboard,
     fields: renderFields,
@@ -308,7 +307,27 @@ function render() {
   };
   const view = views[state.active] || views.dashboard;
   if (!views[state.active]) state.active = "dashboard";
+  syncTopbarControls();
+  renderMetrics();
   view();
+}
+
+function syncTopbarControls() {
+  const dashboardOnly = state.active === "dashboard";
+  const searchBox = document.querySelector(".search-box");
+  if (searchBox) searchBox.hidden = !dashboardOnly;
+  $("#filterToggle").hidden = !dashboardOnly;
+
+  if (!dashboardOnly) {
+    state.query = "";
+    state.filters = { crop: "Tutte", status: "Tutti", priority: "Tutte" };
+    const searchInput = $("#globalSearch");
+    if (searchInput) searchInput.value = "";
+    const filterBar = $("#filterBar");
+    if (filterBar) filterBar.hidden = true;
+    $("#filterToggle").setAttribute("aria-expanded", "false");
+    renderFilterOptions();
+  }
 }
 
 function renderMetrics() {
@@ -354,7 +373,7 @@ function renderDashboard() {
     </section>
     <section class="panel">
       ${panelHead("Lavori pianificati", "Sintesi calendario e capacità operativa", true)}
-      ${bookings.length ? `<div class="data-table">${bookings.slice(0, 5).map(bookingRow).join("")}</div>` : emptyState()}
+      ${filterItems(bookings).length ? `<div class="data-table">${filterItems(bookings).slice(0, 5).map(bookingRow).join("")}</div>` : emptyState()}
     </section>
   `;
   bindOpeners();
@@ -436,9 +455,6 @@ function renderCapacity() {
     <section class="panel">
       ${panelHead("Capienza operativa annua", "Calendario operatori, flotta droni e giornate vendute ai clienti", true)}
       <div class="capacity-controls">
-        <label>Numero T100 in flotta
-          <input id="fleetT100" type="number" min="0" step="1" value="${state.capacity.fleet.t100}" />
-        </label>
         <label>Mese operativo
           <select id="capacityMonth">
             ${monthNames.map((name, index) => `<option value="${index}" ${index === state.capacity.month ? "selected" : ""}>${name}</option>`).join("")}
@@ -450,55 +466,27 @@ function renderCapacity() {
       </div>
 
       <div class="capacity-summary">
+        ${capacityStat("Flotta configurata", `${state.capacity.fleet.t100} T100`, "Modificabile solo in Amministrazione / Lavori")}
         ${capacityStat("Giornata operativa", "100%", "Ogni prenotazione occupa una quota calcolata dai dati inseriti")}
         ${capacityStat("Saturazione media anno", `${avgUsage}%`, `${soldYear} ha venduti su ${soldDays} giorni`)}
         ${capacityStat("Giorni completi", String(fullDays), "Date arrivate al 100% operativo")}
-        ${capacityStat("Metodo calcolo", "ha / max", "Coltura + operazione + terreno determinano la percentuale")}
       </div>
     </section>
 
     <section class="panel">
-      <div class="capacity-layout">
+      <div class="panel-head">
         <div>
-          <div class="panel-head">
-            <div>
-              <h2>Calendario capienza / ${monthNames[state.capacity.month]} ${state.capacity.year}</h2>
-              <p class="panel-subtitle">Clicca un giorno, compila i dati del lavoro e aggiungi la quota percentuale alla giornata</p>
-            </div>
-            <div class="button-row">
-              <button class="btn ghost" id="prevCapacityMonth" type="button">Mese prima</button>
-              <button class="btn ghost" id="nextCapacityMonth" type="button">Mese dopo</button>
-              <span class="pill ${state.capacity.fleet.t100 ? "ok" : "danger"}">${state.capacity.fleet.t100} T100</span>
-            </div>
-          </div>
-          ${capacityCalendar()}
+          <h2>Calendario capienza / ${monthNames[state.capacity.month]} ${state.capacity.year}</h2>
+          <p class="panel-subtitle">Vista sola lettura: lavori, flotta e quote operative si modificano da Amministrazione / Lavori</p>
         </div>
-        <aside class="booking-box">
-          <p class="spaced-label">Nuova vendita</p>
-          <h2>Prenota quota operativa</h2>
-          <form id="bookingForm">
-            <label>Data lavoro <input name="date" id="bookingDate" type="date" value="${state.capacity.year}-${pad(state.capacity.month + 1)}-12" required /></label>
-            <label>Cliente <input name="client" placeholder="Azienda Agricola Rossi" required /></label>
-            <label>Campo <input name="field" placeholder="Campo o appezzamento" required /></label>
-            <label>Coltura
-              <select name="crop" id="bookingCrop">
-                ${Object.entries(cropLabels).map(([key, label]) => `<option value="${key}">${label}</option>`).join("")}
-              </select>
-            </label>
-            <label>Tipo operazione
-              <select name="service" id="bookingService">
-                ${Object.entries(operationLabels).map(([key, label]) => `<option value="${key}">${label}</option>`).join("")}
-              </select>
-            </label>
-            <label>Difficoltà terreno 1-10
-              <input name="terrainLevel" id="bookingTerrain" type="range" min="1" max="10" step="1" value="1" />
-            </label>
-            <label>Ettari da vendere <input name="hectares" id="bookingHectares" type="number" min="1" step="1" placeholder="Es. 25" required /></label>
-            <p class="form-note" id="bookingNote">Seleziona un giorno e inserisci i dati: la percentuale viene calcolata automaticamente.</p>
-            <button class="btn primary" type="submit">${icons.plus} Aggiungi prenotazione</button>
-          </form>
-        </aside>
+        <div class="button-row">
+          <button class="btn ghost" id="prevCapacityMonth" type="button">Mese prima</button>
+          <button class="btn ghost" id="nextCapacityMonth" type="button">Mese dopo</button>
+          <button class="btn primary js-go-view" data-target-view="backend" data-admin-tab-target="jobs" type="button">Modifica lavori</button>
+          <span class="pill ${state.capacity.fleet.t100 ? "ok" : "danger"}">${state.capacity.fleet.t100} T100</span>
+        </div>
       </div>
+      ${capacityCalendar()}
     </section>
 
     <section class="panel">
@@ -509,8 +497,8 @@ function renderCapacity() {
       </div>
     </section>
   `;
-  bindCapacityDaySelection();
   bindOpeners();
+  bindActionButtons();
   bindExport();
 }
 
@@ -655,6 +643,16 @@ function renderAdminJobs() {
   const selectedField = fields.find((field) => field.name === editing?.field);
   const defaultCrop = editing?.crop || cropKeyFromLabel(selectedField?.crop) || "mais";
   return `
+    <div class="fleet-panel">
+      <div>
+        <p class="spaced-label">Capienza operativa</p>
+        <h3>Flotta e lavori venduti</h3>
+        <p class="panel-subtitle">Questa è l'unica sezione in cui modificare flotta, lavori e saturazione del calendario.</p>
+      </div>
+      <label>Numero T100 in flotta
+        <input id="fleetT100" type="number" min="0" step="1" value="${state.capacity.fleet.t100}" />
+      </label>
+    </div>
     <div class="admin-layout">
       <form class="admin-form" id="adminJobForm" novalidate>
         <div>
@@ -1175,6 +1173,7 @@ function pipeline() {
 function bindActionButtons() {
   document.querySelectorAll(".js-go-view").forEach((button) => {
     button.addEventListener("click", () => {
+      if (button.dataset.adminTabTarget) state.admin.tab = button.dataset.adminTabTarget;
       state.active = button.dataset.targetView || "dashboard";
       renderNav();
       render();
@@ -1501,7 +1500,7 @@ function capacityStat(label, value, detail) {
   return `<article class="capacity-stat"><p>${label}</p><strong>${value}</strong><small>${detail}</small></article>`;
 }
 
-function capacityCalendar() {
+function capacityCalendar({ interactive = false } = {}) {
   const { year, month } = state.capacity;
   const firstDate = new Date(year, month, 1);
   const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -1516,13 +1515,17 @@ function capacityCalendar() {
     const remainingPercent = remainingPercentForDate(date);
     const status = used === 0 ? "free" : remaining === 0 ? "full" : "partial";
     const label = used === 0 ? "0% occupato" : remaining === 0 ? "100% completo" : `${remainingPercent}% disponibile`;
+    const tag = interactive ? "button" : "div";
+    const attrs = interactive
+      ? `class="calendar-cell ${status} js-select-day" data-date="${date}" type="button"`
+      : `class="calendar-cell ${status}"`;
     cells.push(`
-      <button class="calendar-cell ${status} js-select-day" data-date="${date}" type="button">
+      <${tag} ${attrs}>
         <span class="day-number">${day}</span>
         <span class="day-status">${label}</span>
         <span class="capacity-meter"><span style="width:${percent}%"></span></span>
         <span class="day-hectares">${percent}% usato / ${remainingPercent}% libero</span>
-      </button>
+      </${tag}>
     `);
   }
   return `
@@ -1580,6 +1583,7 @@ function displayStatus(value) {
 }
 
 function filterItems(items) {
+  if (state.active !== "dashboard") return items;
   return items.filter((item) => {
     const haystack = Object.values(item).flat().join(" ").toLowerCase();
     const matchesQuery = !state.query || haystack.includes(state.query);
