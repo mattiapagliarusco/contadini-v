@@ -209,6 +209,12 @@ function bindEvents() {
     if (event.target.closest?.("#restoreData")) $("#restoreBackupInput")?.click();
     if (event.target.closest?.("#prevCapacityMonth")) shiftCapacityMonth(-1);
     if (event.target.closest?.("#nextCapacityMonth")) shiftCapacityMonth(1);
+    const fleetChoice = event.target.closest?.(".js-fleet-choice");
+    if (fleetChoice) {
+      state.capacity.fleet.t100 = Number(fleetChoice.dataset.t100 || 1);
+      saveAppData();
+      render();
+    }
     const drawerAction = event.target.closest?.(".js-drawer-action");
     if (drawerAction) runDrawerAction(drawerAction.dataset.action);
     const adminTab = event.target.closest?.(".js-admin-tab");
@@ -315,15 +321,17 @@ function render() {
 function syncTopbarControls() {
   const dashboardOnly = state.active === "dashboard";
   const searchBox = document.querySelector(".search-box");
+  const filterBar = $("#filterBar");
+  const metrics = $("#metrics");
   if (searchBox) searchBox.hidden = !dashboardOnly;
   $("#filterToggle").hidden = !dashboardOnly;
+  if (metrics) metrics.hidden = !dashboardOnly;
 
   if (!dashboardOnly) {
     state.query = "";
     state.filters = { crop: "Tutte", status: "Tutti", priority: "Tutte" };
     const searchInput = $("#globalSearch");
     if (searchInput) searchInput.value = "";
-    const filterBar = $("#filterBar");
     if (filterBar) filterBar.hidden = true;
     $("#filterToggle").setAttribute("aria-expanded", "false");
     renderFilterOptions();
@@ -331,12 +339,19 @@ function syncTopbarControls() {
 }
 
 function renderMetrics() {
+  const metrics = $("#metrics");
+  if (state.active !== "dashboard") {
+    metrics.hidden = true;
+    metrics.innerHTML = "";
+    return;
+  }
+  metrics.hidden = false;
   const urgentCount = permits.filter((permit) => permit.status === "Urgente").length;
   const todayJobs = bookings.filter((booking) => booking.date === todayIso()).length;
   $("#todayFields").textContent = todayJobs;
   $("#urgentPermits").textContent = urgentCount;
   $("#updatesToSend").textContent = reminders.length;
-  $("#metrics").innerHTML = [
+  metrics.innerHTML = [
     ["Campi attivi", String(fields.length), `${formatNumber(sumHectares(fields))} ettari gestiti`, "sprout"],
     ["Autorizzazioni valide", String(permits.filter((permit) => permit.status === "Valida").length), `${urgentCount} urgenti`, "shield"],
     ["Missioni da preparare", String(missions.filter((mission) => mission.status !== "Completato").length), "Checklist operative aperte", "drone"],
@@ -464,9 +479,23 @@ function renderCapacity() {
           <input id="capacityYear" type="number" min="2025" max="2035" step="1" value="${state.capacity.year}" />
         </label>
       </div>
+      <div class="fleet-scenario">
+        <div>
+          <p class="spaced-label">Flotta operativa</p>
+          <h3>Scenario T100 sul calendario</h3>
+          <p class="panel-subtitle">Seleziona 1, 2 o 3 droni: le percentuali occupate dalle giornate vengono ricalcolate subito.</p>
+        </div>
+        <div class="segmented-control" role="group" aria-label="Numero droni T100">
+          ${[1, 2, 3].map((count) => `
+            <button class="segment js-fleet-choice ${state.capacity.fleet.t100 === count ? "active" : ""}" data-t100="${count}" aria-pressed="${state.capacity.fleet.t100 === count}" type="button">
+              ${count} T100
+            </button>
+          `).join("")}
+        </div>
+      </div>
 
       <div class="capacity-summary">
-        ${capacityStat("Flotta configurata", `${state.capacity.fleet.t100} T100`, "Modificabile solo in Amministrazione / Lavori")}
+        ${capacityStat("Flotta selezionata", `${state.capacity.fleet.t100} T100`, "Base del calcolo percentuale del calendario")}
         ${capacityStat("Giornata operativa", "100%", "Ogni prenotazione occupa una quota calcolata dai dati inseriti")}
         ${capacityStat("Saturazione media anno", `${avgUsage}%`, `${soldYear} ha venduti su ${soldDays} giorni`)}
         ${capacityStat("Giorni completi", String(fullDays), "Date arrivate al 100% operativo")}

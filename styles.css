@@ -490,6 +490,40 @@ tr:last-child td { border-bottom: 0; }
   color: var(--ink-soft);
   font-weight: 750;
 }
+.fleet-scenario {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 18px;
+  padding: 18px;
+  border: 1px solid #e7efc8;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #fbfff2, #ffffff);
+}
+.fleet-scenario h3 { margin: 4px 0 6px; }
+.segmented-control {
+  display: inline-flex;
+  gap: 6px;
+  padding: 6px;
+  border: 1px solid #e7edb9;
+  border-radius: 24px;
+  background: var(--wash);
+}
+.segment {
+  min-height: 38px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 19px;
+  color: #106b3a;
+  background: transparent;
+  font-weight: 900;
+}
+.segment.active {
+  color: white;
+  background: linear-gradient(90deg, #0b8440, #6aa500);
+  box-shadow: 0 8px 18px rgba(11, 79, 43, .12);
+}
 .capacity-summary {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -879,6 +913,8 @@ tr:last-child td { border-bottom: 0; }
   }
   .nav-group { min-width: 220px; }
   .topbar, .panel { padding: 18px; border-radius: 18px; }
+  .fleet-scenario { display: grid; }
+  .segmented-control { width: 100%; display: grid; grid-template-columns: repeat(3, 1fr); }
   .fleet-panel { display: grid; }
   .fleet-panel label { min-width: 0; }
   .metrics, .card-grid, .flow-grid, .profile-grid, .form-grid, .capacity-controls, .capacity-summary, .quote-form, .portal-grid, .admin-grid, .report-grid, .admin-forms, .permit-form, .mission-grid { grid-template-columns: 1fr; }
