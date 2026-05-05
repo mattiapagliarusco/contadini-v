@@ -1,0 +1,117 @@
+﻿<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Contadini Volanti | Gestionale operativo</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="Navigazione principale">
+        <div class="brand brand-sidebar">
+          <span class="brand-mark" aria-hidden="true">
+            <span class="rotor"></span>
+            <span class="drone-dot"></span>
+          </span>
+          <span>
+            <span class="brand-kicker">Agritech gestionale</span>
+            <strong>Contadini Volanti</strong>
+          </span>
+        </div>
+
+        <nav class="nav-list" id="navList"></nav>
+
+        <section class="side-panel">
+          <h2>Stato operativo di oggi</h2>
+          <dl>
+            <div><dt>Campi pianificati</dt><dd id="todayFields">8</dd></div>
+            <div><dt>Autorizzazioni urgenti</dt><dd id="urgentPermits">2</dd></div>
+            <div><dt>Update da inviare</dt><dd id="updatesToSend">5</dd></div>
+          </dl>
+        </section>
+
+        <section class="side-panel identity-panel">
+          <p class="spaced-label">Identità visiva</p>
+          <p>Palette agricola con verde campo, verde foglia e giallo grano.</p>
+        </section>
+      </aside>
+
+      <main class="main">
+        <header class="topbar">
+          <div class="brand brand-top">
+            <span class="brand-mark small" aria-hidden="true">
+              <span class="rotor"></span>
+              <span class="drone-dot"></span>
+            </span>
+            <span>
+              <span class="brand-kicker pale">Agritech gestionale</span>
+              <strong>Contadini<br />Volanti</strong>
+            </span>
+          </div>
+          <div class="headline">
+            <p>Gestionale operativo / droni, campi e clienti</p>
+            <h1>Controllo completo di campi, autorizzazioni e VRA</h1>
+          </div>
+          <div class="top-actions">
+            <label class="search-box">
+              <span data-icon="search"></span>
+              <input id="globalSearch" type="search" placeholder="Cerca campo, cliente, coltura..." autocomplete="off" />
+            </label>
+            <div class="button-row">
+              <button class="btn ghost" id="filterToggle" type="button" aria-controls="filterBar" aria-expanded="false"><span data-icon="filter"></span>Filtri</button>
+              <button class="btn primary" id="newOperation" type="button"><span data-icon="plus"></span>Nuova operazione</button>
+              <button class="btn ghost" id="logoutButton" type="button">Esci</button>
+            </div>
+          </div>
+        </header>
+
+        <section class="filter-bar" id="filterBar" hidden>
+          <label>Coltura <select id="cropFilter"></select></label>
+          <label>Stato <select id="statusFilter"></select></label>
+          <label>Priorità <select id="priorityFilter"></select></label>
+          <button class="btn text" id="resetFilters" type="button">Azzera filtri</button>
+        </section>
+
+        <section class="metrics" id="metrics"></section>
+        <section id="workspace" class="workspace" aria-live="polite"></section>
+      </main>
+    </div>
+
+    <div class="drawer-backdrop" id="drawerBackdrop" hidden></div>
+    <aside class="detail-drawer" id="detailDrawer" aria-label="Dettaglio elemento" aria-hidden="true"></aside>
+
+    <dialog class="modal" id="operationModal">
+      <form method="dialog" id="operationForm">
+        <div class="modal-head">
+          <div>
+            <p class="spaced-label">Nuova operazione</p>
+            <h2>Pianifica attività</h2>
+          </div>
+          <button class="icon-btn" value="cancel" aria-label="Chiudi" type="submit"><span data-icon="x"></span></button>
+        </div>
+        <div class="form-grid">
+          <label>Tipo
+            <select name="type">
+              <option value="field">Campo</option>
+              <option value="permit">Autorizzazione</option>
+              <option value="vra">VRA</option>
+              <option value="reminder">Reminder</option>
+            </select>
+          </label>
+          <label>Titolo <input name="title" required placeholder="Es. Controllo vento vigneto" /></label>
+          <label>Cliente <input name="client" placeholder="Azienda Agricola Bianchi" /></label>
+          <label>Data <input name="date" type="date" /></label>
+          <label class="wide">Nota <textarea name="note" rows="3" placeholder="Dettagli operativi"></textarea></label>
+        </div>
+        <div class="modal-actions">
+          <button class="btn ghost" value="cancel" type="submit">Annulla</button>
+          <button class="btn primary" value="default" type="submit">Salva operazione</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
+
