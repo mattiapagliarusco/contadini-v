@@ -21,6 +21,8 @@ const state = {
   query: "",
   filters: { crop: "Tutte", status: "Tutti", priority: "Tutte" },
   operations: [],
+  formDrafts: {},
+  formFocus: null,
   admin: {
     tab: "clients",
     editClient: null,
@@ -198,6 +200,7 @@ function bindEvents() {
   $("#drawerBackdrop").addEventListener("click", closeDrawer);
   document.addEventListener("submit", (event) => {
     if (event.defaultPrevented) return;
+    if (event.target?.id === "operationForm") return;
     const handlers = {
       bookingForm: saveBooking,
       adminClientForm: saveClient,
@@ -246,6 +249,7 @@ function bindEvents() {
     if (cancelAdminEdit) cancelAdminEdit.dataset.target && cancelAdminEditing(cancelAdminEdit.dataset.target);
   });
   document.addEventListener("input", (event) => {
+    captureFormDraft(event.target);
     captureAdminDraft(event.target);
     if (event.target?.id === "fleetT100") {
       updateFleetFromInput(event.target);
@@ -254,6 +258,7 @@ function bindEvents() {
     if (event.target?.closest?.("#quoteForm")) updateQuotePreview();
   });
   document.addEventListener("change", (event) => {
+    captureFormDraft(event.target);
     captureAdminDraft(event.target);
     if (event.target?.id === "fleetT100") {
       updateFleetFromInput(event.target, { persist: true });
@@ -284,6 +289,79 @@ function bindEvents() {
 
 function emptyAdminDrafts() {
   return { client: null, field: null, job: null };
+}
+
+function captureFormDraft(target = document.activeElement) {
+  const form = target?.closest?.("form");
+  if (!form?.id) return null;
+  const draft = {};
+  Array.from(form.elements).forEach((element) => {
+    if (!element.name || ["button", "submit", "reset", "file"].includes(element.type)) return;
+    if (element.type === "checkbox") {
+      draft[element.name] = Boolean(element.checked);
+      return;
+    }
+    if (element.type === "radio") {
+      if (element.checked) draft[element.name] = element.value;
+      return;
+    }
+    draft[element.name] = element.value;
+  });
+  state.formDrafts[form.id] = draft;
+  state.formFocus = {
+    formId: form.id,
+    name: target?.name || "",
+    id: target?.id || "",
+    start: typeof target?.selectionStart === "number" ? target.selectionStart : null,
+    end: typeof target?.selectionEnd === "number" ? target.selectionEnd : null
+  };
+  return state.formFocus;
+}
+
+function restoreFormDrafts(focus = state.formFocus) {
+  Object.entries(state.formDrafts || {}).forEach(([formId, draft]) => {
+    const form = document.getElementById(formId);
+    if (!form || !draft) return;
+    Object.entries(draft).forEach(([name, value]) => {
+      const control = form.elements.namedItem(name);
+      if (!control) return;
+      const controls = typeof RadioNodeList !== "undefined" && control instanceof RadioNodeList ? Array.from(control) : [control];
+      controls.forEach((element) => {
+        if (element.type === "file") return;
+        if (element.type === "checkbox") {
+          element.checked = Boolean(value);
+          return;
+        }
+        if (element.type === "radio") {
+          element.checked = element.value === value;
+          return;
+        }
+        element.value = value;
+      });
+    });
+  });
+
+  if ($("#quoteForm")) updateQuotePreview();
+  if ($("#waTemplate")) updateWhatsAppPreview();
+  if (!focus?.formId) return;
+  const form = document.getElementById(focus.formId);
+  if (!form) return;
+  const target = focus.id ? document.getElementById(focus.id) : form.elements.namedItem(focus.name);
+  if (!target?.focus) return;
+  target.focus({ preventScroll: true });
+  if (typeof focus.start === "number" && typeof target.setSelectionRange === "function") {
+    target.setSelectionRange(focus.start, focus.end ?? focus.start);
+  }
+}
+
+function clearFormDraft(formId) {
+  if (!formId) return;
+  delete state.formDrafts[formId];
+  if (state.formFocus?.formId === formId) state.formFocus = null;
+}
+
+function clearFormDrafts(formIds) {
+  formIds.forEach(clearFormDraft);
 }
 
 function ensureAdminDrafts() {
@@ -362,7 +440,8 @@ function fillSelect(node, options, selected) {
   node.innerHTML = options.map((option) => `<option ${option === selected ? "selected" : ""}>${option}</option>`).join("");
 }
 
-function render() {
+function render({ preserveForms = true } = {}) {
+  const focus = preserveForms ? captureFormDraft() : null;
   const views = {
     dashboard: renderDashboard,
     fields: renderFields,
@@ -383,6 +462,7 @@ function render() {
   syncTopbarControls();
   renderMetrics();
   view();
+  if (preserveForms) restoreFormDrafts(focus);
 }
 
 function syncTopbarControls() {
@@ -1500,7 +1580,7 @@ function clearDemoData() {
   localStorage.removeItem(storageKey);
   saveAppData();
   renderFilterOptions();
-  render();
+  render({ preserveForms: false });
 }
 
 function backupAppData() {
@@ -1519,7 +1599,7 @@ function restoreBackupFromFile(file) {
       saveAppData();
       renderFilterOptions();
       renderNav();
-      render();
+      render({ preserveForms: false });
     } catch (error) {
       console.warn("Ripristino non riuscito.", error);
       alert("Backup non valido o corrotto. Nessun dato è stato importato.");
@@ -1834,10 +1914,11 @@ function saveOperation(event) {
   });
   $("#operationModal").close();
   event.currentTarget.reset();
+  clearFormDraft("operationForm");
   saveAppData();
   state.active = data.type === "permit" ? "permits" : data.type === "vra" ? "vra" : data.type === "reminder" ? "reminders" : "fields";
   renderNav();
-  render();
+  render({ preserveForms: false });
 }
 
 async function saveBooking(event) {
@@ -1886,8 +1967,9 @@ async function saveBooking(event) {
   });
   addBookingCascade(booking, percent);
   focusCapacityOnDate(booking.date);
+  clearFormDraft("bookingForm");
   await saveAppData();
-  render();
+  render({ preserveForms: false });
 }
 
 function buildBooking({ date, service, crop, terrainLevel, client, field, hectares, status = "Venduto" }) {
@@ -1972,6 +2054,7 @@ function switchAdminTab(tab) {
   state.admin.editField = null;
   state.admin.editJob = null;
   clearAllAdminDrafts();
+  clearFormDrafts(["adminClientForm", "adminFieldForm", "adminJobForm"]);
   render();
 }
 
@@ -1984,11 +2067,13 @@ function cancelAdminEditing(target) {
   if (target === "field") state.admin.editField = null;
   if (target === "job") state.admin.editJob = null;
   clearAdminDraft(target);
-  render();
+  clearFormDraft(`admin${target[0].toUpperCase()}${target.slice(1)}Form`);
+  render({ preserveForms: false });
 }
 
 function startEditClient(name) {
   clearAdminDraft("client");
+  clearFormDraft("adminClientForm");
   state.admin.tab = "clients";
   state.admin.editClient = name;
   render();
@@ -1996,6 +2081,7 @@ function startEditClient(name) {
 
 function startEditField(id) {
   clearAdminDraft("field");
+  clearFormDraft("adminFieldForm");
   state.admin.tab = "fields";
   state.admin.editField = id;
   render();
@@ -2003,6 +2089,7 @@ function startEditField(id) {
 
 function startEditJob(id) {
   clearAdminDraft("job");
+  clearFormDraft("adminJobForm");
   state.admin.tab = "jobs";
   state.admin.editJob = id;
   render();
@@ -2048,11 +2135,12 @@ function saveClient(event) {
     setAdminNotice(`Cliente "${name}" creato.`);
   }
   state.admin.editClient = null;
+  clearFormDraft("adminClientForm");
   clearAdminDraft("client");
   refreshFarmerCrops();
   saveAppData();
   renderFilterOptions();
-  render();
+  render({ preserveForms: false });
 }
 
 function saveField(event) {
@@ -2096,11 +2184,12 @@ function saveField(event) {
     setAdminNotice(`Campo "${name}" creato.`);
   }
   state.admin.editField = null;
+  clearFormDraft("adminFieldForm");
   clearAdminDraft("field");
   refreshFarmerCrops();
   saveAppData();
   renderFilterOptions();
-  render();
+  render({ preserveForms: false });
 }
 
 async function saveAdminJob(event) {
@@ -2149,9 +2238,10 @@ async function saveAdminJob(event) {
     setAdminNotice(`Lavoro ${booking.id} creato e salvato con missione, report e reminder. Lo trovi in Capienza su ${monthNames[state.capacity.month]} ${state.capacity.year}.`);
   }
   state.admin.editJob = null;
+  clearFormDraft("adminJobForm");
   clearAdminDraft("job");
   await saveAppData();
-  render();
+  render({ preserveForms: false });
 }
 
 function deleteClientByName(name) {
@@ -2411,7 +2501,8 @@ async function savePermit(event) {
   });
   saveAppData();
   form.reset();
-  render();
+  clearFormDraft("permitForm");
+  render({ preserveForms: false });
 }
 
 function fileToDataUrl(file) {

@@ -80,7 +80,10 @@ createServer(async (request, response) => {
 
   try {
     const body = await readFile(filePath);
-    response.writeHead(200, { "Content-Type": types[extname(filePath)] || "application/octet-stream" });
+    response.writeHead(200, {
+      "Content-Type": types[extname(filePath)] || "application/octet-stream",
+      "Cache-Control": "no-store, max-age=0"
+    });
     response.end(body);
   } catch {
     response.writeHead(404);
