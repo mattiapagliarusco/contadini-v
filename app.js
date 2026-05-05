@@ -236,14 +236,15 @@ function bindEvents() {
   });
   document.addEventListener("input", (event) => {
     if (event.target?.id === "fleetT100") {
-      state.capacity.fleet.t100 = Math.max(0, Number(event.target.value || 0));
-      saveAppData();
-      render();
+      updateFleetFromInput(event.target);
     }
     if (event.target?.id === "bookingTerrain" || event.target?.id === "bookingHectares") updateBookingPreview();
     if (event.target?.closest?.("#quoteForm")) updateQuotePreview();
   });
   document.addEventListener("change", (event) => {
+    if (event.target?.id === "fleetT100") {
+      updateFleetFromInput(event.target, { persist: true });
+    }
     if (event.target?.id === "capacityMonth") {
       state.capacity.month = Number(event.target.value);
       saveAppData();
@@ -263,6 +264,18 @@ function bindEvents() {
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") closeDrawer();
   });
+}
+
+function updateFleetFromInput(input, { persist = false } = {}) {
+  const nextValue = Math.max(0, Math.round(Number(input.value || 0)));
+  state.capacity.fleet.t100 = nextValue;
+  const status = $("#fleetT100Status");
+  if (status) {
+    status.textContent = persist
+      ? `Flotta salvata: ${nextValue} T100.`
+      : `Flotta impostata a ${nextValue} T100. Puoi continuare a compilare il lavoro.`;
+  }
+  if (persist) saveAppData();
 }
 
 function renderNav() {
@@ -681,6 +694,7 @@ function renderAdminJobs() {
       </div>
       <label>Numero T100 in flotta
         <input id="fleetT100" type="number" min="0" step="1" value="${state.capacity.fleet.t100}" />
+        <small id="fleetT100Status" class="form-note" aria-live="polite">La flotta viene salvata senza azzerare il form lavoro.</small>
       </label>
     </div>
     <div class="admin-layout">
