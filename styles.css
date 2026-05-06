@@ -722,6 +722,63 @@ tr:last-child td { border-bottom: 0; }
   background: #eafff5;
   line-height: 1.45;
 }
+.sustainability-result h2 {
+  color: #08795a;
+}
+.sustainability-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(260px, 1fr));
+  gap: 16px;
+}
+.sustainability-card {
+  padding: 18px;
+  border: 1px solid #e7eee8;
+  border-radius: 18px;
+  background: white;
+  box-shadow: var(--shadow-soft);
+}
+.sustainability-chart {
+  display: grid;
+  gap: 13px;
+  margin: 18px 0;
+  padding: 16px;
+  border: 1px solid #e7efc8;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #fbfff4, #f3fbef);
+}
+.sustainability-bar {
+  display: grid;
+  gap: 7px;
+}
+.sustainability-bar div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--muted);
+  font-weight: 850;
+}
+.sustainability-bar strong {
+  color: var(--ink);
+}
+.sustainability-bar i {
+  display: block;
+  height: 13px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e6eee3;
+}
+.sustainability-bar b {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  transition: width .2s ease;
+}
+.sustainability-bar.standard b { background: #6b8b7b; }
+.sustainability-bar.vra b { background: #18a65d; }
+.sustainability-bar.saving b { background: #d9d957; }
+.sustainability-bar.zones b { background: #7acfb2; }
+.sustainability-bar.soil b { background: #9fbd46; }
 .season-grid {
   display: grid;
   grid-template-columns: repeat(5, minmax(160px, 1fr));
@@ -1250,7 +1307,7 @@ tr:last-child td { border-bottom: 0; }
   .capacity-layout { grid-template-columns: 1fr; }
   .admin-layout { grid-template-columns: 1fr; }
   .quote-layout, .whatsapp-layout { grid-template-columns: 1fr; }
-  .portal-grid, .admin-grid, .report-grid, .admin-forms, .vra-board, .vra-chart-grid, .predictive-grid, .season-grid, .weather-grid, .advisor-grid, .passport-grid, .passport-columns, .weather-kpis, .advisor-zones { grid-template-columns: repeat(2, minmax(220px, 1fr)); }
+  .portal-grid, .admin-grid, .report-grid, .admin-forms, .vra-board, .vra-chart-grid, .predictive-grid, .season-grid, .weather-grid, .advisor-grid, .passport-grid, .passport-columns, .weather-kpis, .advisor-zones, .sustainability-grid { grid-template-columns: repeat(2, minmax(220px, 1fr)); }
   .passport-layout, .simulator-layout { grid-template-columns: 1fr; }
   .booking-box { position: static; }
 }
@@ -1270,7 +1327,7 @@ tr:last-child td { border-bottom: 0; }
   .segmented-control { width: 100%; display: grid; grid-template-columns: repeat(3, 1fr); }
   .fleet-panel { display: grid; }
   .fleet-panel label { min-width: 0; }
-  .metrics, .card-grid, .flow-grid, .profile-grid, .form-grid, .capacity-controls, .capacity-summary, .quote-form, .portal-grid, .admin-grid, .report-grid, .admin-forms, .permit-form, .mission-grid, .vra-board, .vra-media-grid, .vra-kpi-grid, .vra-chart-grid, .predictive-grid, .predictive-meta, .season-grid, .passport-layout, .simulator-layout, .passport-grid, .passport-columns, .weather-grid, .weather-kpis, .advisor-grid, .advisor-zones { grid-template-columns: 1fr; }
+  .metrics, .card-grid, .flow-grid, .profile-grid, .form-grid, .capacity-controls, .capacity-summary, .quote-form, .portal-grid, .admin-grid, .report-grid, .admin-forms, .permit-form, .mission-grid, .vra-board, .vra-media-grid, .vra-kpi-grid, .vra-chart-grid, .predictive-grid, .predictive-meta, .season-grid, .passport-layout, .simulator-layout, .passport-grid, .passport-columns, .weather-grid, .weather-kpis, .advisor-grid, .advisor-zones, .sustainability-grid { grid-template-columns: 1fr; }
   .vra-bar-row { grid-template-columns: 1fr; }
   .permit-form .wide { grid-column: auto; }
   .calendar-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }

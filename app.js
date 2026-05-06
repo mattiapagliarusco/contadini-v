@@ -22,6 +22,7 @@ const state = {
   operations: [],
   passportId: "VIT-014",
   economicField: "VIT-014",
+  sustainabilityField: "MAI-022",
   capacity: {
     month: 2,
     year: 2026,
@@ -42,6 +43,7 @@ const navItems = [
   ["backend", "Backend admin", "shield"],
   ["quotes", "Preventivi", "chart"],
   ["simulator", "Simulatore", "chart"],
+  ["sustainability", "Sostenibilità", "chart"],
   ["portal", "Il mio campo", "user"],
   ["whatsapp", "WhatsApp", "phone"],
   ["missions", "Mission Control", "drone"],
@@ -289,6 +291,13 @@ const vraAdvisorData = [
   { fieldId: "OLI-004", status: "Bozza", high: 16, low: 27, normal: 57, standardDose: 190, vraDose: 168, saving: "-11,6%", recommendation: "Completare mappa e programmare trattamento leggero nelle aree accessibili." }
 ];
 
+const sustainabilityModels = [
+  { fieldId: "VIT-014", intervention: "Trattamento fogliare VRA", standardDose: 280, vraDose: 246, productCost: 1.85, tractorPassesAvoided: 2, untreatedZones: 18, compactionReduction: 35, note: "Riduzione input su filari a vigoria alta, senza trasformare il dato in marketing generico." },
+  { fieldId: "MAI-022", intervention: "Concimazione mais a dose variabile", standardDose: 350, vraDose: 301, productCost: 1.12, tractorPassesAvoided: 1, untreatedZones: 22, compactionReduction: 28, note: "Campo dimostrativo: 49 kg/ha evitati e riduzione stimata del 14%." },
+  { fieldId: "FRT-009", intervention: "Intervento localizzato frutteto", standardDose: 240, vraDose: 210, productCost: 2.05, tractorPassesAvoided: 2, untreatedZones: 26, compactionReduction: 32, note: "Si evita il trattamento pieno nelle zone senza stress idrico." },
+  { fieldId: "OLI-004", intervention: "Trattamento leggero olivo", standardDose: 190, vraDose: 168, productCost: 1.74, tractorPassesAvoided: 1, untreatedZones: 16, compactionReduction: 24, note: "Stima preliminare da confermare dopo mappa completa." }
+];
+
 const missionChecks = ["Drone", "Meteo", "Autorizzazioni", "DPI", "Prodotto", "Batterie"];
 const missions = [
   { id: "MIS-014", client: "Azienda Agricola Bianchi", field: "Vigneto Collina Est", position: "Valdobbiadene", hectares: 6.8, product: "Trattamento fogliare", material: "82 l", batteries: 5, time: "2h 20m", margin: "38%", status: "Da preparare", checks: ["Autorizzazioni"] },
@@ -360,6 +369,7 @@ function bindEvents() {
     if (event.target?.id === "bookingTerrain" || event.target?.id === "bookingHectares") updateBookingPreview();
     if (event.target?.closest?.("#quoteForm")) updateQuotePreview();
     if (event.target?.closest?.("#economicForm")) updateEconomicSimulation();
+    if (event.target?.closest?.("#sustainabilityForm")) updateSustainabilityCalculator();
   });
   document.addEventListener("change", (event) => {
     if (event.target?.id === "capacityMonth") {
@@ -372,6 +382,10 @@ function bindEvents() {
     if (event.target?.classList?.contains("mission-check")) updateMissionCheck(event.target);
     if (event.target?.id === "economicField") {
       state.economicField = event.target.value;
+      render();
+    }
+    if (event.target?.id === "sustainabilityField") {
+      state.sustainabilityField = event.target.value;
       render();
     }
   });
@@ -429,6 +443,7 @@ function render() {
     backend: renderBackend,
     quotes: renderQuotes,
     simulator: renderEconomicSimulator,
+    sustainability: renderSustainabilityCalculator,
     portal: renderPortal,
     whatsapp: renderWhatsApp,
     missions: renderMissions,
@@ -469,6 +484,10 @@ function renderDashboard() {
     return total + calculateEconomicSimulation({ ...simulation, hectares: field?.hectares || 0 }).saving;
   }, 0);
   const vraToExplain = vraAdvisorData.filter((item) => item.status !== "Inviata").length;
+  const avoidedInput = sustainabilityModels.reduce((total, model) => {
+    const field = getFieldById(model.fieldId);
+    return total + calculateSustainability({ ...model, hectares: field?.hectares || 0 }).avoidedProduct;
+  }, 0);
   workspace.innerHTML = `
     <section class="panel">
       ${panelHead("Nuovi strumenti operativi", "Passaporti, meteo, simulazioni economiche e spiegazioni VRA", false)}
@@ -477,6 +496,7 @@ function renderDashboard() {
         ${capacityStat("Allerte meteo", String(weatherAlerts), "Finestre da valutare prima del volo")}
         ${capacityStat("Risparmio stimato", `${Math.round(totalEstimatedSaving)} EUR`, "Somma simulazioni campo per campo")}
         ${capacityStat("VRA da spiegare", String(vraToExplain), "Mappe pronte da tradurre al cliente")}
+        ${capacityStat("Input evitato", `${Math.round(avoidedInput)} unità`, "Stima tecnica da dose standard vs VRA")}
       </div>
     </section>
     <section class="panel">
@@ -828,6 +848,42 @@ function renderEconomicSimulator() {
     </section>
   `;
   updateEconomicSimulation();
+  bindExport();
+}
+
+function renderSustainabilityCalculator() {
+  const selected = getSustainabilityModel(state.sustainabilityField);
+  const field = getFieldById(selected.fieldId);
+  workspace.innerHTML = `
+    <section class="panel">
+      ${panelHead("Calcolatore sostenibilità e riduzione sprechi", "Efficienza misurabile: input evitato, passaggi ridotti e minore compattamento", true)}
+      <div class="simulator-layout">
+        <form class="economic-form" id="sustainabilityForm">
+          <label>Campo
+            <select id="sustainabilityField" name="fieldId">
+              ${fields.map((item) => `<option value="${escapeHtml(item.id)}" ${item.id === selected.fieldId ? "selected" : ""}>${escapeHtml(item.name)}</option>`).join("")}
+            </select>
+          </label>
+          ${sustainabilityInput("Ettari", "hectares", field.hectares, "0.1")}
+          ${sustainabilityInput("Dose standard kg o litri/ha", "standardDose", selected.standardDose)}
+          ${sustainabilityInput("Dose VRA kg o litri/ha", "vraDose", selected.vraDose)}
+          ${sustainabilityInput("Costo prodotto EUR/unità", "productCost", selected.productCost, "0.01")}
+          ${sustainabilityInput("Passaggi trattore evitati", "tractorPassesAvoided", selected.tractorPassesAvoided)}
+          ${sustainabilityInput("Zone non trattate inutilmente %", "untreatedZones", selected.untreatedZones)}
+          ${sustainabilityInput("Minore compattamento stimato %", "compactionReduction", selected.compactionReduction)}
+          <p class="form-note">${escapeHtml(selected.note)}</p>
+        </form>
+        <aside class="simulator-result sustainability-result" id="sustainabilityResult"></aside>
+      </div>
+    </section>
+    <section class="panel">
+      ${panelHead("Sintesi campi", "Confronto rapido degli interventi con riduzione input misurata", true)}
+      <div class="sustainability-grid">
+        ${sustainabilityModels.map(sustainabilitySummaryCard).join("")}
+      </div>
+    </section>
+  `;
+  updateSustainabilityCalculator();
   bindExport();
 }
 
@@ -1337,6 +1393,123 @@ function updateEconomicSimulation() {
   `;
 }
 
+function sustainabilityInput(label, name, value, step = "1") {
+  return `<label>${label}<input name="${name}" type="number" min="0" step="${step}" value="${value}" /></label>`;
+}
+
+function getSustainabilityValues() {
+  const selected = getSustainabilityModel(state.sustainabilityField);
+  const field = getFieldById(selected.fieldId);
+  const defaults = {
+    fieldId: selected.fieldId,
+    hectares: field.hectares,
+    standardDose: selected.standardDose,
+    vraDose: selected.vraDose,
+    productCost: selected.productCost,
+    tractorPassesAvoided: selected.tractorPassesAvoided,
+    untreatedZones: selected.untreatedZones,
+    compactionReduction: selected.compactionReduction
+  };
+  const form = $("#sustainabilityForm");
+  if (!form?.elements) return defaults;
+  return {
+    fieldId: form.elements.fieldId?.value || defaults.fieldId,
+    hectares: Number(form.elements.hectares?.value || defaults.hectares),
+    standardDose: Number(form.elements.standardDose?.value || defaults.standardDose),
+    vraDose: Number(form.elements.vraDose?.value || defaults.vraDose),
+    productCost: Number(form.elements.productCost?.value || defaults.productCost),
+    tractorPassesAvoided: Number(form.elements.tractorPassesAvoided?.value || defaults.tractorPassesAvoided),
+    untreatedZones: Number(form.elements.untreatedZones?.value || defaults.untreatedZones),
+    compactionReduction: Number(form.elements.compactionReduction?.value || defaults.compactionReduction)
+  };
+}
+
+function calculateSustainability(values) {
+  const hectares = Number(values.hectares || 0);
+  const standardDose = Number(values.standardDose || 0);
+  const vraDose = Number(values.vraDose || 0);
+  const doseDelta = Math.max(0, standardDose - vraDose);
+  const avoidedProduct = doseDelta * hectares;
+  const standardInput = standardDose * hectares;
+  const vraInput = vraDose * hectares;
+  const reductionRate = standardDose ? Math.round((doseDelta / standardDose) * 1000) / 10 : 0;
+  const estimatedSaving = Math.round(avoidedProduct * Number(values.productCost || 0));
+  const untreatedHectares = Math.round(hectares * Math.min(100, Number(values.untreatedZones || 0)) / 100 * 10) / 10;
+  const compactionReduction = Math.min(100, Math.max(0, Number(values.compactionReduction || 0)));
+  return { doseDelta, avoidedProduct, standardInput, vraInput, reductionRate, estimatedSaving, untreatedHectares, compactionReduction };
+}
+
+function updateSustainabilityCalculator() {
+  const target = $("#sustainabilityResult");
+  if (!target) return;
+  const values = getSustainabilityValues();
+  const field = getFieldById(values.fieldId);
+  const model = getSustainabilityModel(values.fieldId);
+  const result = calculateSustainability(values);
+  target.innerHTML = `
+    <p class="spaced-label">Efficienza misurabile</p>
+    <h2>${result.reductionRate}% input in meno</h2>
+    <p class="form-note">Campo: <strong>${escapeHtml(field.name)}</strong>. Dose standard ${values.standardDose} per ha, dose VRA ${values.vraDose} per ha. Risparmio: <strong>${result.doseDelta} per ha</strong>, pari a circa il <strong>${result.reductionRate}%</strong>.</p>
+    <div class="quote-kpis">
+      ${capacityStat("Prodotto evitato", `${Math.round(result.avoidedProduct)} unità`, `${result.doseDelta} per ha su ${values.hectares} ha`)}
+      ${capacityStat("Risparmio stimato", `${result.estimatedSaving} EUR`, `${values.productCost} EUR/unità prodotto`)}
+      ${capacityStat("Passaggi trattore evitati", String(values.tractorPassesAvoided), "Stima operativa rispetto a intervento pieno")}
+      ${capacityStat("Zone non trattate", `${values.untreatedZones}%`, `${result.untreatedHectares} ha non trattati inutilmente`)}
+    </div>
+    ${sustainabilityChart(values, result)}
+    <div class="advisor-explanation">
+      Non è una promessa ambientale generica: il dato serve a misurare efficienza, sprechi evitati e compattamento ridotto. ${escapeHtml(model.note)}
+    </div>
+  `;
+}
+
+function sustainabilityChart(values, result) {
+  const maxInput = Math.max(1, result.standardInput, result.vraInput);
+  const standardWidth = Math.max(5, Math.round((result.standardInput / maxInput) * 100));
+  const vraWidth = Math.max(5, Math.round((result.vraInput / maxInput) * 100));
+  const avoidedWidth = Math.min(100, Math.max(5, Math.round(result.reductionRate)));
+  const zonesWidth = Math.min(100, Math.max(5, Math.round(Number(values.untreatedZones || 0))));
+  const compactionWidth = Math.min(100, Math.max(5, Math.round(result.compactionReduction)));
+  return `
+    <div class="sustainability-chart" aria-label="Grafico dinamico sostenibilità">
+      ${sustainabilityBar("Dose standard totale", `${Math.round(result.standardInput)} unità`, standardWidth, "standard")}
+      ${sustainabilityBar("Dose VRA totale", `${Math.round(result.vraInput)} unità`, vraWidth, "vra")}
+      ${sustainabilityBar("Riduzione input", `${result.reductionRate}%`, avoidedWidth, "saving")}
+      ${sustainabilityBar("Zone evitate", `${values.untreatedZones}%`, zonesWidth, "zones")}
+      ${sustainabilityBar("Minore compattamento", `${result.compactionReduction}%`, compactionWidth, "soil")}
+    </div>
+  `;
+}
+
+function sustainabilityBar(label, value, width, tone) {
+  return `
+    <div class="sustainability-bar ${tone}">
+      <div><span>${label}</span><strong>${value}</strong></div>
+      <i><b style="width:${width}%"></b></i>
+    </div>
+  `;
+}
+
+function sustainabilitySummaryCard(model) {
+  const field = getFieldById(model.fieldId);
+  const result = calculateSustainability({ ...model, hectares: field.hectares });
+  return `
+    <article class="sustainability-card">
+      <div class="panel-head" style="margin:0 0 12px">
+        <div><h3>${escapeHtml(field.name)}</h3><p class="muted">${escapeHtml(model.intervention)} / ${escapeHtml(field.crop)}</p></div>
+        <span class="pill ok">-${result.reductionRate}% input</span>
+      </div>
+      <div class="mini-grid">
+        <div class="mini-stat"><span>Dose standard</span><strong>${model.standardDose}/ha</strong></div>
+        <div class="mini-stat"><span>Dose VRA</span><strong>${model.vraDose}/ha</strong></div>
+        <div class="mini-stat"><span>Risparmio</span><strong>${result.doseDelta}/ha</strong></div>
+        <div class="mini-stat"><span>Valore stimato</span><strong>${result.estimatedSaving} EUR</strong></div>
+      </div>
+      <p class="form-note">${escapeHtml(model.note)}</p>
+    </article>
+  `;
+}
+
 function portalBox(title, items) {
   return `
     <article class="portal-box">
@@ -1748,6 +1921,10 @@ function getSelectedPassport() {
 
 function getEconomicSimulation(fieldId) {
   return economicSimulations.find((simulation) => simulation.fieldId === fieldId) || economicSimulations[0];
+}
+
+function getSustainabilityModel(fieldId) {
+  return sustainabilityModels.find((model) => model.fieldId === fieldId) || sustainabilityModels[0];
 }
 
 function parseSavingKg(saving) {
@@ -2171,7 +2348,7 @@ function bindExport() {
 }
 
 function exportCurrent() {
-  const datasets = { dashboard: fields, fields, passport: fieldPassports, permits, weather: weatherOperationalAlerts, vra: vraMaps, advisor: vraAdvisorData, capacity: bookings, predictive: buildPredictiveSuggestions(), backend: bookings, quotes: [getQuoteValues()], simulator: [getEconomicValues()], portal: fields, whatsapp: Object.values(whatsappTemplates).map((message, index) => ({ id: index + 1, message })), missions, reports: missionReports, farmers, reminders };
+  const datasets = { dashboard: fields, fields, passport: fieldPassports, permits, weather: weatherOperationalAlerts, vra: vraMaps, advisor: vraAdvisorData, capacity: bookings, predictive: buildPredictiveSuggestions(), backend: bookings, quotes: [getQuoteValues()], simulator: [getEconomicValues()], sustainability: [getSustainabilityValues()], portal: fields, whatsapp: Object.values(whatsappTemplates).map((message, index) => ({ id: index + 1, message })), missions, reports: missionReports, farmers, reminders };
   const rows = filterItems(datasets[state.active] || fields);
   const csv = toCsv(rows);
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
