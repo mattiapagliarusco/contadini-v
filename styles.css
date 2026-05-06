@@ -533,6 +533,66 @@ tr:last-child td { border-bottom: 0; }
 .flow-card svg { color: #0f8d47; }
 .flow-card h3 { margin: 16px 0 10px; }
 .flow-card p { margin: 0; color: var(--muted); line-height: 1.35; }
+.predictive-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(280px, 1fr));
+  gap: 16px;
+}
+.predictive-card,
+.season-card {
+  padding: 18px;
+  border: 1px solid #e7eee8;
+  border-radius: 18px;
+  background: white;
+  box-shadow: 0 10px 22px rgba(6,51,31,.04);
+}
+.predictive-message {
+  margin: 0 0 14px;
+  color: var(--ink);
+  font-size: 1.04rem;
+  line-height: 1.45;
+  font-weight: 800;
+}
+.predictive-meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(120px, 1fr));
+  gap: 10px;
+  margin: 14px 0;
+}
+.predictive-meta div {
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--wash);
+}
+.predictive-meta dt {
+  color: var(--muted);
+  font-size: .82rem;
+  font-weight: 800;
+}
+.predictive-meta dd {
+  margin: 4px 0 0;
+  font-weight: 900;
+}
+.season-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(160px, 1fr));
+  gap: 14px;
+}
+.season-card h3 { margin: 12px 0 8px; }
+.season-card p { margin: 0 0 10px; line-height: 1.38; }
+.season-months {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 8px;
+  color: #0b7040;
+  font-weight: 900;
+}
+.season-months i {
+  height: 7px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #18a65d, #d9d957);
+}
 .ops-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -1041,7 +1101,7 @@ tr:last-child td { border-bottom: 0; }
   .capacity-layout { grid-template-columns: 1fr; }
   .admin-layout { grid-template-columns: 1fr; }
   .quote-layout, .whatsapp-layout { grid-template-columns: 1fr; }
-  .portal-grid, .admin-grid, .report-grid, .admin-forms, .vra-board, .vra-chart-grid { grid-template-columns: repeat(2, minmax(220px, 1fr)); }
+  .portal-grid, .admin-grid, .report-grid, .admin-forms, .vra-board, .vra-chart-grid, .predictive-grid, .season-grid { grid-template-columns: repeat(2, minmax(220px, 1fr)); }
   .booking-box { position: static; }
 }
 
@@ -1060,7 +1120,7 @@ tr:last-child td { border-bottom: 0; }
   .segmented-control { width: 100%; display: grid; grid-template-columns: repeat(3, 1fr); }
   .fleet-panel { display: grid; }
   .fleet-panel label { min-width: 0; }
-  .metrics, .card-grid, .flow-grid, .profile-grid, .form-grid, .capacity-controls, .capacity-summary, .quote-form, .portal-grid, .admin-grid, .report-grid, .admin-forms, .permit-form, .mission-grid, .vra-board, .vra-media-grid, .vra-kpi-grid, .vra-chart-grid { grid-template-columns: 1fr; }
+  .metrics, .card-grid, .flow-grid, .profile-grid, .form-grid, .capacity-controls, .capacity-summary, .quote-form, .portal-grid, .admin-grid, .report-grid, .admin-forms, .permit-form, .mission-grid, .vra-board, .vra-media-grid, .vra-kpi-grid, .vra-chart-grid, .predictive-grid, .predictive-meta, .season-grid { grid-template-columns: 1fr; }
   .vra-bar-row { grid-template-columns: 1fr; }
   .permit-form .wide { grid-column: auto; }
   .calendar-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }

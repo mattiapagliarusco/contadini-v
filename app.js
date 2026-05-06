@@ -33,6 +33,7 @@ const navItems = [
   ["permits", "Autorizzazioni", "shield"],
   ["vra", "VRA", "chart"],
   ["capacity", "Capienza annua", "calendar"],
+  ["predictive", "Calendario predittivo", "calendar"],
   ["backend", "Backend admin", "shield"],
   ["quotes", "Preventivi", "chart"],
   ["portal", "Il mio campo", "user"],
@@ -127,6 +128,79 @@ const whatsappTemplates = {
   review: "Ciao Marco, grazie per aver lavorato con Contadini Volanti. Se il servizio ti e stato utile, una recensione o un contatto agricolo da suggerirci ci aiuterebbe molto."
 };
 
+const predictiveWindows = [
+  {
+    id: "vite-vigoria-maggio",
+    crop: "Vite",
+    startMonth: 5,
+    startDay: 16,
+    endMonth: 6,
+    endDay: 30,
+    title: "Monitoraggio vigneti e vigoria",
+    activity: "trattamenti, vigoria, stress e finestre meteo",
+    commercialAction: "proporre monitoraggio su vigneti",
+    priority: "Alta",
+    leadDays: 10,
+    note: "Fase utile per mappe vigoria, stress vegetativo e programmazione trattamenti mirati."
+  },
+  {
+    id: "mais-azoto-piralide",
+    crop: "Mais",
+    startMonth: 5,
+    startDay: 20,
+    endMonth: 7,
+    endDay: 15,
+    title: "Azoto, piralide e concimazione",
+    activity: "azoto, piralide, concimazione e prescrizione a dose variabile",
+    commercialAction: "proporre controllo azoto e rischio piralide",
+    priority: "Alta",
+    leadDays: 10,
+    note: "Finestra commerciale per monitoraggio, lancio insetti e concimazione mirata."
+  },
+  {
+    id: "frutta-stress-idrico",
+    crop: "Frutta",
+    startMonth: 6,
+    startDay: 1,
+    endMonth: 8,
+    endDay: 20,
+    title: "Stress idrico e copertura frutteto",
+    activity: "stress idrico, copertura e interventi localizzati",
+    commercialAction: "proporre mappa stress idrico su frutteti",
+    priority: "Media",
+    leadDays: 12,
+    note: "Periodo utile per leggere stress e programmare passaggi localizzati senza trattare tutto il frutteto."
+  },
+  {
+    id: "olivo-trattamenti-stagionali",
+    crop: "Olivo",
+    startMonth: 9,
+    startDay: 1,
+    endMonth: 10,
+    endDay: 31,
+    title: "Trattamenti stagionali olivo",
+    activity: "trattamenti stagionali, monitoraggio chioma e finestre operative",
+    commercialAction: "proporre sopralluogo e trattamento stagionale su oliveti",
+    priority: "Media",
+    leadDays: 14,
+    note: "Finestra per preparare interventi prima dei passaggi autunnali e verificare accessibilita del campo."
+  },
+  {
+    id: "serre-trattamenti-specifici",
+    crop: "Serre",
+    startMonth: 3,
+    startDay: 1,
+    endMonth: 11,
+    endDay: 30,
+    title: "Serre e trattamenti specifici",
+    activity: "rivestimenti, trattamenti specifici e controllo copertura",
+    commercialAction: "proporre controllo dedicato per serre e colture protette",
+    priority: "Media",
+    leadDays: 7,
+    note: "Opportunita commerciale anche senza campo gia censito: utile per aprire nuovi contatti."
+  }
+];
+
 const missionChecks = ["Drone", "Meteo", "Autorizzazioni", "DPI", "Prodotto", "Batterie"];
 const missions = [
   { id: "MIS-014", client: "Azienda Agricola Bianchi", field: "Vigneto Collina Est", position: "Valdobbiadene", hectares: 6.8, product: "Trattamento fogliare", material: "82 l", batteries: 5, time: "2h 20m", margin: "38%", status: "Da preparare", checks: ["Autorizzazioni"] },
@@ -179,6 +253,8 @@ function bindEvents() {
     if (exportButton) exportAiReadable(exportButton.dataset.format);
     const startMission = event.target.closest?.(".js-start-mission");
     if (startMission) startMissionFlight(startMission.dataset.id);
+    const predictiveReminder = event.target.closest?.(".js-add-predictive-reminder");
+    if (predictiveReminder) createPredictiveReminder(predictiveReminder.dataset.id);
   });
   document.addEventListener("input", (event) => {
     if (event.target?.id === "fleetT100") {
@@ -245,6 +321,7 @@ function render() {
     permits: renderPermits,
     vra: renderVra,
     capacity: renderCapacity,
+    predictive: renderPredictiveCalendar,
     backend: renderBackend,
     quotes: renderQuotes,
     portal: renderPortal,
@@ -426,6 +503,36 @@ function renderCapacity() {
   `;
   bindCapacityDaySelection();
   bindOpeners();
+  bindExport();
+}
+
+function renderPredictiveCalendar() {
+  const suggestions = buildPredictiveSuggestions();
+  const nextSuggestions = suggestions.slice(0, 6);
+  const urgentSuggestions = suggestions.filter((item) => item.daysUntil <= 15).length;
+  workspace.innerHTML = `
+    <section class="panel">
+      ${panelHead("Calendario agricolo predittivo", "Finestre stagionali per proporre interventi prima che il cliente li chieda", true)}
+      <div class="capacity-summary">
+        ${capacityStat("Finestre prossime", String(nextSuggestions.length), "Suggerimenti ordinati per urgenza")}
+        ${capacityStat("Lead caldi", String(urgentSuggestions), "Da contattare entro 15 giorni")}
+        ${capacityStat("Colture coperte", String(new Set(predictiveWindows.map((rule) => rule.crop)).size), "Vite, mais, frutta, olivo e serre")}
+        ${capacityStat("Reminder generabili", String(suggestions.length), "Ogni card puo diventare promemoria commerciale")}
+      </div>
+    </section>
+    <section class="panel">
+      ${panelHead("Prossime opportunita commerciali", "Messaggi e azioni pronte per azienda, campo e coltura", false)}
+      <div class="predictive-grid">
+        ${nextSuggestions.map(predictiveCard).join("")}
+      </div>
+    </section>
+    <section class="panel">
+      ${panelHead("Mappa stagionale per coltura", "Cosa proporre durante l'anno agricolo", true)}
+      <div class="season-grid">
+        ${predictiveWindows.map(seasonWindowCard).join("")}
+      </div>
+    </section>
+  `;
   bindExport();
 }
 
@@ -788,6 +895,48 @@ function reminderItem(reminder) {
 
 function flowCard(icon, title, text) {
   return `<article class="flow-card">${icons[icon]}<h3>${title}</h3><p>${text}</p></article>`;
+}
+
+function predictiveCard(item) {
+  return `
+    <article class="predictive-card">
+      <div class="panel-head" style="margin:0 0 12px">
+        <div>
+          <p class="panel-subtitle">${item.crop} / ${item.zone}</p>
+          <h3>${item.title}</h3>
+        </div>
+        ${pill(item.priority)}
+      </div>
+      <p class="predictive-message">${item.message}</p>
+      <dl class="predictive-meta">
+        <div><dt>Finestra</dt><dd>${formatDate(item.startIso)} - ${formatDate(item.endIso)}</dd></div>
+        <div><dt>Campo</dt><dd>${item.fieldName}</dd></div>
+        <div><dt>Azienda</dt><dd>${item.client}</dd></div>
+        <div><dt>Tra</dt><dd>${item.daysUntil} giorni</dd></div>
+      </dl>
+      <p class="muted">${item.note}</p>
+      <div class="button-row">
+        <button class="btn primary js-add-predictive-reminder" data-id="${item.id}" type="button">${icons.bell} Crea reminder</button>
+        <button class="btn ghost" type="button" disabled>In futuro: meteo + storico</button>
+      </div>
+    </article>
+  `;
+}
+
+function seasonWindowCard(rule) {
+  return `
+    <article class="season-card">
+      <div class="season-months">
+        <span>${monthNames[rule.startMonth - 1].slice(0, 3)}</span>
+        <i></i>
+        <span>${monthNames[rule.endMonth - 1].slice(0, 3)}</span>
+      </div>
+      <h3>${rule.crop}</h3>
+      <p><strong>${rule.title}</strong></p>
+      <p class="muted">${rule.activity}</p>
+      <span class="pill ${rule.priority === "Alta" ? "danger" : "blue"}">${rule.priority}</span>
+    </article>
+  `;
 }
 
 function quoteInput(label, name, value) {
@@ -1201,6 +1350,107 @@ function averageVraSaving(maps = vraMaps) {
   if (!maps.length) return 0;
   const average = maps.reduce((total, map) => total + parseSavingPercent(map.saving), 0) / maps.length;
   return Math.round(average * 10) / 10;
+}
+
+function buildPredictiveSuggestions(referenceDate = new Date()) {
+  return predictiveWindows.flatMap((rule) => {
+    const cropFields = fields.filter((field) => field.crop.toLowerCase() === rule.crop.toLowerCase());
+    const targets = cropFields.length ? cropFields : [predictiveMarketTarget(rule)];
+    return targets.map((field) => {
+      const window = nextPredictiveWindow(rule, referenceDate);
+      const daysUntil = daysBetween(referenceDate, window.start);
+      const zone = zoneFromCity(field.city);
+      const fieldName = field.name || `${rule.crop} da sviluppare`;
+      const client = field.client || "Nuovo contatto commerciale";
+      return {
+        id: `${rule.id}-${field.id || "market"}`,
+        ruleId: rule.id,
+        crop: rule.crop,
+        title: rule.title,
+        fieldName,
+        client,
+        zone,
+        city: field.city || zone,
+        priority: daysUntil <= 10 ? "Alta" : rule.priority,
+        daysUntil,
+        startIso: toIsoDate(window.start),
+        endIso: toIsoDate(window.end),
+        note: rule.note,
+        message: `Tra ${daysUntil} giorni inizia la finestra ideale per ${rule.commercialAction} in ${zone}.`
+      };
+    });
+  }).sort((a, b) => a.daysUntil - b.daysUntil);
+}
+
+function predictiveMarketTarget(rule) {
+  return {
+    id: "market",
+    name: `${rule.crop} prospect`,
+    client: "Prospect agricolo",
+    city: rule.crop === "Serre" ? "zona serre / colture protette" : "zona agricola"
+  };
+}
+
+function nextPredictiveWindow(rule, referenceDate) {
+  const reference = startOfDay(referenceDate);
+  for (let offset = 0; offset <= 1; offset += 1) {
+    const year = reference.getFullYear() + offset;
+    const start = new Date(year, rule.startMonth - 1, rule.startDay);
+    const end = new Date(year, rule.endMonth - 1, rule.endDay);
+    if (end >= reference) return { start, end };
+  }
+  const year = reference.getFullYear() + 1;
+  return {
+    start: new Date(year, rule.startMonth - 1, rule.startDay),
+    end: new Date(year, rule.endMonth - 1, rule.endDay)
+  };
+}
+
+function createPredictiveReminder(id) {
+  const suggestion = buildPredictiveSuggestions().find((item) => item.id === id);
+  if (!suggestion) return;
+  reminders.unshift({
+    id: nextReminderId(),
+    title: suggestion.message,
+    when: `${formatDate(suggestion.startIso)} / Commerciale`,
+    type: "Calendario predittivo",
+    priority: suggestion.priority,
+    crop: suggestion.crop,
+    note: `${suggestion.client} / ${suggestion.fieldName}. ${suggestion.note}`
+  });
+  state.active = "reminders";
+  renderNav();
+  render();
+}
+
+function nextReminderId() {
+  const next = reminders.reduce((max, reminder) => {
+    const match = String(reminder.id || "").match(/(\d+)$/);
+    return Math.max(max, match ? Number(match[1]) : 0);
+  }, 0) + 1;
+  return `REM-${String(next).padStart(2, "0")}`;
+}
+
+function startOfDay(date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function daysBetween(from, to) {
+  const diff = startOfDay(to).getTime() - startOfDay(from).getTime();
+  return Math.max(0, Math.ceil(diff / 86400000));
+}
+
+function toIsoDate(date) {
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+function zoneFromCity(city) {
+  const value = String(city || "").toLowerCase();
+  if (value.includes("valdobbiadene")) return "zona Treviso";
+  if (value.includes("rovigo")) return "zona Rovigo";
+  if (value.includes("verona")) return "zona Verona";
+  if (value.includes("vicenza")) return "zona Vicenza";
+  return city ? `zona ${city}` : "zona agricola";
 }
 
 function bookedForDate(date) {
