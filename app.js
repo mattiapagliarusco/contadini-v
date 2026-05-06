@@ -33,7 +33,7 @@ const navItems = [
   ["permits", "Autorizzazioni", "shield"],
   ["vra", "VRA", "chart"],
   ["capacity", "Capienza annua", "calendar"],
-  ["backend", "Backend", "shield"],
+  ["backend", "Backend admin", "shield"],
   ["quotes", "Preventivi", "chart"],
   ["portal", "Il mio campo", "user"],
   ["whatsapp", "WhatsApp", "phone"],
@@ -433,7 +433,8 @@ function renderBackend() {
     const clientBookings = bookings.filter((booking) => booking.client === client.name);
     const clientMissions = missions.filter((mission) => mission.client === client.name);
     const clientReports = missionReports.filter((report) => report.client === client.name);
-    return { client, clientFields, clientBookings, clientMissions, clientReports };
+    const clientPermits = permits.filter((permit) => permit.client === client.name);
+    return { client, clientFields, clientBookings, clientMissions, clientReports, clientPermits };
   });
   workspace.innerHTML = `
     <section class="panel">
@@ -459,6 +460,7 @@ function renderBackend() {
               <div><dt>Lavori</dt><dd>${folder.clientBookings.length}</dd></div>
               <div><dt>Missioni</dt><dd>${folder.clientMissions.length}</dd></div>
               <div><dt>Report</dt><dd>${folder.clientReports.length}</dd></div>
+              <div><dt>Permessi</dt><dd>${folder.clientPermits.length}</dd></div>
             </dl>
             <p class="muted">Ultimo aggiornamento: ${folder.client.last}</p>
           </article>
@@ -468,13 +470,13 @@ function renderBackend() {
     <section class="panel">
       ${panelHead("Riassunto lavori", "Ogni lavoro creato aggiorna calendario, missioni, reminder e report", true)}
       <div class="data-table">
-        <div class="table-row header"><span>Lavoro</span><span>Cliente</span><span>Operazione</span><span>Quota</span><span>Stato</span></div>
+        <div class="table-row header"><span>Lavoro</span><span>Cliente</span><span>Operazione</span><span>Missione / report</span><span>Stato</span></div>
         ${bookings.map((booking) => `
           <button class="table-row js-open" data-kind="booking" data-id="${booking.id}" type="button">
             <span><h3>${booking.id}</h3><span class="muted">${formatDate(booking.date)} / ${booking.field}</span></span>
             <span>${booking.client}</span>
-            <span>${operationLabels[booking.service]}</span>
-            <span>${bookingOccupancyPercent(booking)}%</span>
+            <span>${operationLabels[booking.service]}<br><span class="muted">${bookingOccupancyPercent(booking)}% giornata</span></span>
+            <span>${backendLinkedStatus(booking)}</span>
             <span>${pill(booking.status)}</span>
           </button>
         `).join("")}
@@ -583,6 +585,15 @@ function renderWhatsApp() {
   bindExport();
 }
 
+function backendLinkedStatus(booking) {
+  const mission = missions.find((item) => item.bookingId === booking.id || (item.client === booking.client && item.field === booking.field));
+  const report = missionReports.find((item) => item.bookingId === booking.id || item.missionId === mission?.id);
+  return `
+    <span class="muted">${mission?.id || "Missione da generare"}</span><br>
+    <span class="muted">${report?.id || "Report da generare"}</span>
+  `;
+}
+
 function renderMissions() {
   workspace.innerHTML = `
     <section class="panel">
@@ -628,32 +639,6 @@ function renderFarmers() {
     </section>
   `;
   bindOpeners();
-  bindExport();
-}
-
-function renderProfile() {
-  const client = farmers[0];
-  workspace.innerHTML = `
-    <section class="panel">
-      ${panelHead("Profilo azienda agricola", "Dati anagrafici, colture, superfici e preferenze", true)}
-      <div class="profile-box">
-        <p class="muted">Ragione sociale</p>
-        <h3>${client.name}</h3>
-        <div class="profile-grid">
-          <p>Referente: <strong>${client.contact}</strong></p>
-          <p>Tipo: <strong>Societa agricola</strong></p>
-          <p>Telefono: <strong>${client.phone}</strong></p>
-          <p>Email: <strong>${client.email}</strong></p>
-          <p>Comune: <strong>${client.city}</strong></p>
-          <p>P. IVA: <strong>${client.vat}</strong></p>
-        </div>
-      </div>
-      <div class="card-grid" style="margin-top:18px">
-        <article class="data-card"><p class="muted">Colture seguite</p><div class="pill-row">${client.crops.map((crop) => `<span class="pill blue">${crop}</span>`).join("")}</div></article>
-        <article class="data-card"><p class="muted">Canale preferito</p><h3>${client.channel}</h3><p class="muted">Report semplici, reminder rapidi e comparazione economica tra metodo tradizionale e VRA.</p></article>
-      </div>
-    </section>
-  `;
   bindExport();
 }
 
@@ -832,6 +817,7 @@ function missionCard(mission) {
 
 function reportCard(report) {
   const mission = missions.find((item) => item.id === report.missionId);
+  const relatedPermits = permits.filter((permit) => permit.client === report.client || permit.field === report.field);
   return `
     <article class="portal-box">
       <div class="panel-head" style="margin:0 0 12px">
@@ -839,12 +825,15 @@ function reportCard(report) {
         ${pill(report.status)}
       </div>
       <p><strong>Missione:</strong> ${report.missionId}</p>
-      <p><strong>Agente usato:</strong> ${report.agent}</p>
+      <p><strong>Lavoro collegato:</strong> ${report.bookingId || mission?.bookingId || "Storico demo"}</p>
+      <p><strong>Agente/operatore usato:</strong> ${report.agent}</p>
       <p><strong>Consuntivo:</strong> ${mission ? `${mission.hectares} ha / ${mission.time} / margine ${mission.margin}` : "Da collegare"}</p>
       <h3>File generati</h3>
       <div class="pill-row">${report.files.map((file) => `<span class="pill blue">${file}</span>`).join("")}</div>
       <h3>Documenti missione</h3>
       <div class="pill-row">${report.documents.map((doc) => `<span class="pill ok">${doc}</span>`).join("")}</div>
+      <h3>Permessi operativi collegati</h3>
+      <div class="pill-row">${relatedPermits.length ? relatedPermits.map((permit) => `<span class="pill warn">${permit.id} / ${permit.status}</span>`).join("") : '<span class="pill blue">Nessun permesso collegato</span>'}</div>
       <p class="muted">${report.summary}</p>
     </article>
   `;
@@ -856,15 +845,36 @@ function buildAiReadablePayload() {
     app: "Contadini Volanti",
     reports: missionReports.map((report) => {
       const mission = missions.find((item) => item.id === report.missionId);
+      const booking = bookings.find((item) => item.id === report.bookingId || item.id === mission?.bookingId);
+      const relatedPermits = permits
+        .filter((permit) => permit.client === report.client || permit.field === report.field)
+        .map((permit) => ({
+          permit_id: permit.id,
+          title: permit.title,
+          status: permit.status,
+          due: permit.due,
+          note: permit.note
+        }));
       return {
         report_id: report.id,
         mission_id: report.missionId,
+        booking_id: report.bookingId || mission?.bookingId || null,
         client: report.client,
         field: report.field,
         status: report.status,
-        farmer_agent: report.agent,
+        operator_agent: report.agent,
         files: report.files,
         operational_documents: report.documents,
+        operational_permits: relatedPermits,
+        booking: booking ? {
+          date: booking.date,
+          service: operationLabels[booking.service],
+          crop: cropLabels[booking.crop],
+          hectares: booking.hectares,
+          drone: booking.drone,
+          status: booking.status,
+          capacity_percent: bookingOccupancyPercent(booking)
+        } : null,
         mission: mission ? {
           hectares: mission.hectares,
           product: mission.product,
@@ -896,10 +906,12 @@ function aiPayloadToMarkdown(payload) {
       `## ${report.report_id} / ${report.field}`,
       `Cliente: ${report.client}`,
       `Missione: ${report.mission_id}`,
-      `Agente usato: ${report.farmer_agent}`,
+      `Lavoro: ${report.booking_id || "non collegato"}`,
+      `Agente/operatore usato: ${report.operator_agent}`,
       `Stato: ${report.status}`,
       `File: ${report.files.join(", ")}`,
       `Documenti: ${report.operational_documents.join(", ")}`,
+      `Permessi: ${report.operational_permits.map((permit) => `${permit.permit_id} ${permit.status}`).join(", ") || "nessuno"}`,
       `Sintesi: ${report.summary}`,
       ""
     ])
@@ -1199,6 +1211,7 @@ function saveBooking(event) {
   missionReports.push(createReportFromMission(mission, booking));
   reminders.unshift({
     id: `REM-${String(reminders.length + 1).padStart(2, "0")}`,
+    bookingId: booking.id,
     title: `Preparare missione ${booking.field}`,
     when: `${formatDate(booking.date)} / 07:30`,
     type: "Mission Control",
@@ -1212,6 +1225,7 @@ function saveBooking(event) {
 function createMissionFromBooking(booking) {
   return {
     id: `MIS-${String(missions.length + 1).padStart(3, "0")}`,
+    bookingId: booking.id,
     client: booking.client,
     field: booking.field,
     position: fields.find((field) => field.name === booking.field)?.city || "Da geolocalizzare",
@@ -1233,6 +1247,7 @@ function createReportFromMission(mission, booking) {
   return {
     id: `RPT-${String(missionReports.length + 1).padStart(3, "0")}`,
     missionId: mission.id,
+    bookingId: booking.id,
     client: mission.client,
     field: mission.field,
     status: "Preliminare",
