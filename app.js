@@ -57,9 +57,9 @@ const permits = [
 ];
 
 const vraMaps = [
-  { id: "VRA-201", field: "Vigneto Collina Est", crop: "Vite", status: "Pronto da inviare", standard: 280, vra: 246, saving: "-34 kg/ha (12%)", note: "Ridurre fertilizzazione del 12% nelle zone ad alta vigoria." },
-  { id: "VRA-202", field: "Mais San Pietro", crop: "Mais", status: "In revisione", standard: 350, vra: 301, saving: "-49 kg/ha (14%)", note: "Aumentare dose nelle aree a bassa copertura, ridurre dell'8% nelle testate." },
-  { id: "VRA-203", field: "Frutteto Nord", crop: "Frutta", status: "Mappa disponibile", standard: 240, vra: 210, saving: "-30 kg/ha (12.5%)", note: "Intervento localizzato solo in 3 blocchi." }
+  { id: "VRA-201", client: "Azienda Agricola Bianchi", field: "Vigneto Collina Est", crop: "Vite", status: "Pronto da inviare", standard: 280, vra: 246, saving: "-34 kg/ha (12%)", agronomist: "Dott. Agr. Luca Ferretti", fieldPhoto: "vigna", multiPhoto: "vigoria", analysis: "Vigoria alta nella fascia centrale e stress in testata sud. La prescrizione riduce fertilizzante nelle zone forti e mantiene copertura nei filari deboli.", layers: ["NDVI", "vigoria", "testate", "pendenza"], seasonSavingEur: 420, note: "Ridurre fertilizzazione del 12% nelle zone ad alta vigoria." },
+  { id: "VRA-202", client: "Societa Agricola Dal Maso", field: "Mais San Pietro", crop: "Mais", status: "In revisione", standard: 350, vra: 301, saving: "-49 kg/ha (14%)", agronomist: "Dott.ssa Agr. Chiara Rizzi", fieldPhoto: "mais", multiPhoto: "azoto", analysis: "Disomogeneita di copertura nelle aree est e testate gia performanti. La dose variabile aumenta nelle aree deboli e taglia input dove la biomassa e stabile.", layers: ["NDRE", "azoto", "copertura", "testate"], seasonSavingEur: 760, note: "Aumentare dose nelle aree a bassa copertura, ridurre dell'8% nelle testate." },
+  { id: "VRA-203", client: "Tenuta San Rocco", field: "Frutteto Nord", crop: "Frutta", status: "Mappa disponibile", standard: 240, vra: 210, saving: "-30 kg/ha (12.5%)", agronomist: "Dott. Agr. Paolo Benetti", fieldPhoto: "frutteto", multiPhoto: "idrico", analysis: "Stress idrico localizzato in tre blocchi e chioma regolare nella parte nord. Intervento mirato solo sulle aree critiche, evitando passaggi pieni non necessari.", layers: ["stress idrico", "chioma", "blocchi", "prescrizione"], seasonSavingEur: 510, note: "Intervento localizzato solo in 3 blocchi." }
 ];
 
 const farmers = [
@@ -325,23 +325,22 @@ function renderVra() {
   const items = filterItems(vraMaps);
   workspace.innerHTML = `
     <section class="panel">
-      ${panelHead("Centro VRA", "Mappe, prescrizioni, vantaggi attesi e stato consegna", true)}
-      <div class="list-stack">${items.length ? items.map(vraItem).join("") : emptyState()}</div>
+      ${panelHead("Archivio VRA aziende", "Foto campo, multispettrale, analisi agronomica e prescrizione operativa", true)}
+      ${items.length ? `<div class="vra-board">${items.map(vraPortfolioCard).join("")}</div>` : emptyState()}
     </section>
     <section class="panel">
       <div class="panel-head">
-        <div><p class="panel-subtitle">Confronto fertilizzante</p><h2>Uso normale vs uso con metodo VRA</h2></div>
-        <span class="pill ok">Risparmio medio 12%</span>
+        <div><p class="panel-subtitle">Confronto tecnico economico</p><h2>Uso normale vs metodo VRA</h2></div>
+        <span class="pill ok">Risparmio medio ${averageVraSaving(items)}%</span>
       </div>
       <div class="comparison">
         <table>
-          <thead><tr><th>Campo</th><th>Coltura</th><th>Uso normale</th><th>Uso con VRA</th><th>Risparmio</th></tr></thead>
-          <tbody>${vraMaps.map((map) => `<tr><td>${map.field}</td><td>${map.crop}</td><td>${map.standard} kg/ha</td><td>${map.vra} kg/ha</td><td class="saving">${map.saving}</td></tr>`).join("")}</tbody>
+          <thead><tr><th>Azienda</th><th>Campo</th><th>Coltura</th><th>Uso normale</th><th>Uso con VRA</th><th>Risparmio</th><th>Agronomo</th></tr></thead>
+          <tbody>${items.map((map) => `<tr><td>${map.client}</td><td>${map.field}</td><td>${map.crop}</td><td>${map.standard} kg/ha</td><td>${map.vra} kg/ha</td><td class="saving">${map.saving}</td><td>${map.agronomist}</td></tr>`).join("")}</tbody>
         </table>
       </div>
     </section>
   `;
-  bindOpeners();
   bindExport();
 }
 
@@ -531,6 +530,7 @@ function renderQuotes() {
 function renderPortal() {
   const client = farmers[0];
   const clientFields = fields.filter((field) => field.client === client.name);
+  const clientVra = vraMaps.filter((map) => map.client === client.name || clientFields.some((field) => field.name === map.field));
   workspace.innerHTML = `
     <section class="panel">
       ${panelHead('Portale cliente "Il mio campo"', "Area riservata con campi, documenti, mappe e storico", true)}
@@ -552,6 +552,10 @@ function renderPortal() {
         ${portalBox("Documenti e autorizzazioni", ["AUT-3108 valida", "Pratica area sensibile", "Liberatoria proprietario"])}
         ${portalBox("Preventivi e reminder", ["Preventivo VRA 2026", "Reminder controllo tra 12 giorni", "Prossimo sopralluogo da confermare"])}
       </div>
+    </section>
+    <section class="panel">
+      ${panelHead("Risparmio VRA della tua azienda", "Grafici dinamici su input evitato, costo stimato e stato delle mappe", true)}
+      ${vraSavingsDashboard(client, clientVra)}
     </section>
   `;
   bindExport();
@@ -680,6 +684,50 @@ function fieldCard(field) {
   `;
 }
 
+function vraPortfolioCard(map) {
+  return `
+    <article class="vra-card">
+      <div class="panel-head" style="margin:0 0 14px">
+        <div>
+          <p class="panel-subtitle">${map.client}</p>
+          <h3>${map.field}</h3>
+          <p class="muted">${map.id} / ${map.crop} / ${map.agronomist}</p>
+        </div>
+        ${pill(map.status)}
+      </div>
+      <div class="vra-media-grid">
+        ${vraPhoto("Foto campo", map.fieldPhoto, map.crop)}
+        ${vraPhoto("Multispettrale", map.multiPhoto, "NDVI / stress")}
+      </div>
+      <div class="vra-analysis">
+        <h3>Analisi agronomo</h3>
+        <p>${map.analysis}</p>
+      </div>
+      <div class="vra-kpi-grid">
+        ${vraKpi("Uso normale", `${map.standard} kg/ha`)}
+        ${vraKpi("Uso VRA", `${map.vra} kg/ha`)}
+        ${vraKpi("Risparmio", map.saving)}
+        ${vraKpi("Valore stimato", `${map.seasonSavingEur} EUR`)}
+      </div>
+      <div class="pill-row">${map.layers.map((layer) => `<span class="pill blue">${layer}</span>`).join("")}</div>
+      <p class="vra-copy">${map.note}</p>
+    </article>
+  `;
+}
+
+function vraPhoto(label, type, caption) {
+  return `
+    <figure class="vra-photo ${type}">
+      <span>${label}</span>
+      <figcaption>${caption}</figcaption>
+    </figure>
+  `;
+}
+
+function vraKpi(label, value) {
+  return `<div class="mini-stat compact"><span>${label}</span><strong>${value}</strong></div>`;
+}
+
 function fieldsTable(items) {
   if (!items.length) return emptyState();
   return `
@@ -784,6 +832,53 @@ function portalBox(title, items) {
       <h3>${title}</h3>
       <ul>${items.map((item) => `<li>${item}</li>`).join("")}</ul>
     </article>
+  `;
+}
+
+function vraSavingsDashboard(client, maps) {
+  if (!maps.length) return '<div class="empty-state">Nessuna mappa VRA ancora disponibile per questa azienda.</div>';
+  const totalKg = maps.reduce((total, map) => total + vraTotalKgSaved(map), 0);
+  const totalEuro = maps.reduce((total, map) => total + Number(map.seasonSavingEur || 0), 0);
+  const avgSaving = averageVraSaving(maps);
+  return `
+    <div class="capacity-summary">
+      ${capacityStat("Input evitato", `${Math.round(totalKg)} kg`, "Stima totale sui campi collegati")}
+      ${capacityStat("Risparmio medio", `${avgSaving}%`, "Riduzione media rispetto all'uso normale")}
+      ${capacityStat("Valore stimato", `${totalEuro} EUR`, "Risparmio stagionale indicativo")}
+      ${capacityStat("Mappe attive", String(maps.length), `Azienda: ${client.name}`)}
+    </div>
+    <div class="vra-chart-grid">
+      ${maps.map(vraSavingsChart).join("")}
+    </div>
+  `;
+}
+
+function vraSavingsChart(map) {
+  const percent = parseSavingPercent(map.saving);
+  const kg = vraTotalKgSaved(map);
+  return `
+    <article class="vra-chart-card">
+      <div class="panel-head" style="margin:0 0 10px">
+        <div><h3>${map.field}</h3><p class="muted">${map.crop} / ${map.status}</p></div>
+        <span class="pill ok">${percent}%</span>
+      </div>
+      <div class="vra-bars">
+        ${vraBar("Uso normale", map.standard, map.standard)}
+        ${vraBar("Metodo VRA", map.vra, map.standard)}
+      </div>
+      <p class="vra-chart-note">Risparmio stimato: <strong>${Math.round(kg)} kg</strong> di input e <strong>${map.seasonSavingEur} EUR</strong> sulla stagione.</p>
+    </article>
+  `;
+}
+
+function vraBar(label, value, max) {
+  const width = Math.max(8, Math.round((Number(value || 0) / Math.max(1, Number(max || 1))) * 100));
+  return `
+    <div class="vra-bar-row">
+      <span>${label}</span>
+      <div class="vra-bar"><i style="width:${width}%"></i></div>
+      <strong>${value} kg/ha</strong>
+    </div>
   `;
 }
 
@@ -1082,6 +1177,30 @@ function bookingsForMonth(year, month) {
 
 function sumHectares(items) {
   return items.reduce((total, item) => total + Number(item.hectares || 0), 0);
+}
+
+function fieldHectaresByName(name) {
+  return Number(fields.find((field) => field.name === name)?.hectares || 1);
+}
+
+function parseSavingKg(saving) {
+  const match = String(saving || "").match(/-?(\d+(?:[.,]\d+)?)/);
+  return match ? Number(match[1].replace(",", ".")) : 0;
+}
+
+function parseSavingPercent(saving) {
+  const match = String(saving || "").match(/\((\d+(?:[.,]\d+)?)%/);
+  return match ? Number(match[1].replace(",", ".")) : 0;
+}
+
+function vraTotalKgSaved(map) {
+  return parseSavingKg(map.saving) * fieldHectaresByName(map.field);
+}
+
+function averageVraSaving(maps = vraMaps) {
+  if (!maps.length) return 0;
+  const average = maps.reduce((total, map) => total + parseSavingPercent(map.saving), 0) / maps.length;
+  return Math.round(average * 10) / 10;
 }
 
 function bookedForDate(date) {
