@@ -177,6 +177,8 @@ function bindEvents() {
   document.addEventListener("click", (event) => {
     const exportButton = event.target.closest?.(".js-export-ai");
     if (exportButton) exportAiReadable(exportButton.dataset.format);
+    const startMission = event.target.closest?.(".js-start-mission");
+    if (startMission) startMissionFlight(startMission.dataset.id);
   });
   document.addEventListener("input", (event) => {
     if (event.target?.id === "fleetT100") {
@@ -194,6 +196,7 @@ function bindEvents() {
     if (["bookingService", "bookingCrop", "bookingTerrain", "bookingDate"].includes(event.target?.id)) updateBookingPreview();
     if (event.target?.closest?.("#quoteForm")) updateQuotePreview();
     if (event.target?.id === "waTemplate") updateWhatsAppPreview();
+    if (event.target?.classList?.contains("mission-check")) updateMissionCheck(event.target);
   });
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") closeDrawer();
@@ -792,12 +795,14 @@ function updateWhatsAppPreview() {
 }
 
 function missionCard(mission) {
-  const completed = mission.checks.length;
+  const completed = (mission.checks || []).length;
   const progress = Math.round((completed / missionChecks.length) * 100);
+  const ready = completed === missionChecks.length;
+  const started = mission.status === "In corso" || mission.startedAt;
   return `
-    <article class="mission-card">
+    <article class="mission-card" data-mission-id="${mission.id}">
       <div class="panel-head" style="margin:0 0 14px">
-        <div><h3>${mission.field}</h3><p class="muted">${mission.client} / ${mission.position}</p></div>
+        <div><h3>${mission.field}</h3><p class="muted">${mission.id} / ${mission.client} / ${mission.position}</p></div>
         ${pill(mission.status)}
       </div>
       <div class="mini-grid">
@@ -806,13 +811,129 @@ function missionCard(mission) {
         <div class="mini-stat"><span>Litri/kg</span><strong>${mission.material}</strong></div>
         <div class="mini-stat"><span>Batterie</span><strong>${mission.batteries}</strong></div>
       </div>
-      <div class="capacity-meter"><span style="width:${progress}%"></span></div>
+      <div class="mission-progress-head">
+        <span>Checklist volo</span>
+        <strong class="js-mission-progress-text">${completed}/${missionChecks.length} completati</strong>
+      </div>
+      <div class="capacity-meter"><span class="js-mission-progress" style="width:${progress}%"></span></div>
       <div class="check-grid">
-        ${missionChecks.map((check) => `<label><input type="checkbox" ${mission.checks.includes(check) ? "checked" : ""} /> ${check}</label>`).join("")}
+        ${missionChecks.map((check) => `<label><input class="mission-check" type="checkbox" data-mission-id="${mission.id}" value="${check}" ${(mission.checks || []).includes(check) ? "checked" : ""} /> ${check}</label>`).join("")}
       </div>
       <p class="muted">Tempo stimato: ${mission.time} / Margine previsto: ${mission.margin}</p>
+      <div class="mission-actions">
+        <button class="btn primary js-start-mission" data-id="${mission.id}" type="button" ${ready && !started ? "" : "disabled"}>${icons.phone} Start volo</button>
+        <span class="muted js-start-hint">${started ? "Volo avviato e notifiche WhatsApp preparate." : ready ? "Checklist completa: puoi avviare il volo." : "Completa tutti i punti per attivare Start."}</span>
+      </div>
+      ${mission.whatsappNotice ? missionNotice(mission) : ""}
     </article>
   `;
+}
+
+function missionNotice(mission) {
+  const notice = mission.whatsappNotice;
+  return `
+    <div class="mission-notice">
+      <strong>Notifica volo iniziato</strong>
+      <p>${notice.startedAtLabel}</p>
+      <div class="button-row">
+        <a class="btn ghost" href="${escapeHtml(notice.farmerUrl)}" target="_blank" rel="noopener">WhatsApp contadino</a>
+        <a class="btn ghost" href="${escapeHtml(notice.companyUrl)}" target="_blank" rel="noopener">WhatsApp azienda</a>
+      </div>
+    </div>
+  `;
+}
+
+function updateMissionCheck(input) {
+  const mission = missions.find((item) => item.id === input.dataset.missionId);
+  if (!mission) return;
+  mission.checks = mission.checks || [];
+  const wasStarted = Boolean(mission.startedAt);
+  if (input.checked && !mission.checks.includes(input.value)) {
+    mission.checks.push(input.value);
+  }
+  if (!input.checked) {
+    mission.checks = mission.checks.filter((check) => check !== input.value);
+    if (mission.status === "In corso") mission.status = "Da preparare";
+    delete mission.startedAt;
+    delete mission.whatsappNotice;
+  }
+  if (wasStarted && !input.checked) {
+    render();
+    return;
+  }
+  syncMissionCard(mission);
+}
+
+function syncMissionCard(mission) {
+  const card = document.querySelector(`[data-mission-id="${mission.id}"]`);
+  if (!card) return;
+  const completed = (mission.checks || []).length;
+  const ready = completed === missionChecks.length;
+  const started = mission.status === "In corso" || mission.startedAt;
+  const progress = Math.round((completed / missionChecks.length) * 100);
+  const bar = card.querySelector(".js-mission-progress");
+  const text = card.querySelector(".js-mission-progress-text");
+  const button = card.querySelector(".js-start-mission");
+  const hint = card.querySelector(".js-start-hint");
+  if (bar) bar.style.width = `${progress}%`;
+  if (text) text.textContent = `${completed}/${missionChecks.length} completati`;
+  if (button) button.disabled = !ready || started;
+  if (hint) {
+    hint.textContent = started
+      ? "Volo avviato e notifiche WhatsApp preparate."
+      : ready
+        ? "Checklist completa: puoi avviare il volo."
+        : "Completa tutti i punti per attivare Start.";
+  }
+}
+
+function startMissionFlight(id) {
+  const mission = missions.find((item) => item.id === id);
+  if (!mission) return;
+  mission.checks = mission.checks || [];
+  if (mission.checks.length !== missionChecks.length) return;
+  mission.status = "In corso";
+  mission.startedAt = new Date().toISOString();
+  mission.whatsappNotice = buildMissionWhatsappNotice(mission);
+  state.operations.unshift({
+    id: `OP-${String(state.operations.length + 1).padStart(2, "0")}`,
+    title: `Start volo ${mission.field}`,
+    client: mission.client,
+    date: mission.startedAt.slice(0, 10),
+    note: "Notifiche WhatsApp preparate per azienda e contadino.",
+    type: "reminder",
+    priority: "Alta",
+    crop: ""
+  });
+  openWhatsAppNotice(mission.whatsappNotice);
+  render();
+}
+
+function buildMissionWhatsappNotice(mission) {
+  const farmer = farmers.find((client) => client.name === mission.client);
+  const startedAtLabel = new Date(mission.startedAt).toLocaleString("it-IT", { dateStyle: "short", timeStyle: "short" });
+  const farmerName = farmer?.contact?.split(" ")[0] || "Cliente";
+  const farmerMessage = `Ciao ${farmerName}, il volo su ${mission.field} e cominciato. Intervento: ${mission.product}, superficie prevista ${mission.hectares} ha. Ti aggiorniamo a missione completata con report e documenti.`;
+  const companyMessage = `Missione avviata: ${mission.id} / ${mission.field}. Cliente: ${mission.client}. Operazione: ${mission.product}. Ettari: ${mission.hectares}. Checklist completa e volo iniziato alle ${startedAtLabel}.`;
+  return {
+    startedAtLabel,
+    farmerMessage,
+    companyMessage,
+    farmerUrl: whatsappUrl(farmer?.phone, farmerMessage),
+    companyUrl: whatsappUrl("", companyMessage)
+  };
+}
+
+function whatsappUrl(phone, message) {
+  const digits = String(phone || "").replace(/\D/g, "");
+  const target = digits ? `/${digits}` : "";
+  return `https://wa.me${target}?text=${encodeURIComponent(message)}`;
+}
+
+function openWhatsAppNotice(notice) {
+  const first = window.open(notice.farmerUrl, "_blank", "noopener");
+  if (!first) return;
+  setTimeout(() => window.open(notice.companyUrl, "_blank", "noopener"), 400);
 }
 
 function reportCard(report) {
