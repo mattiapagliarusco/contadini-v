@@ -20,6 +20,8 @@ const state = {
   query: "",
   filters: { crop: "Tutte", status: "Tutti", priority: "Tutte" },
   operations: [],
+  passportId: "VIT-014",
+  economicField: "VIT-014",
   capacity: {
     month: 2,
     year: 2026,
@@ -30,12 +32,16 @@ const state = {
 const navItems = [
   ["dashboard", "Dashboard", "dashboard"],
   ["fields", "Campi", "sprout"],
+  ["passport", "Passaporto Campo", "shield"],
   ["permits", "Autorizzazioni", "shield"],
+  ["weather", "Meteo Operativo", "calendar"],
   ["vra", "VRA", "chart"],
+  ["advisor", "Consigliatore VRA", "chart"],
   ["capacity", "Capienza annua", "calendar"],
   ["predictive", "Calendario predittivo", "calendar"],
   ["backend", "Backend admin", "shield"],
   ["quotes", "Preventivi", "chart"],
+  ["simulator", "Simulatore", "chart"],
   ["portal", "Il mio campo", "user"],
   ["whatsapp", "WhatsApp", "phone"],
   ["missions", "Mission Control", "drone"],
@@ -201,6 +207,88 @@ const predictiveWindows = [
   }
 ];
 
+const fieldPassports = [
+  {
+    fieldId: "VIT-014",
+    variety: "Glera / vigneto collinare",
+    completeness: 78,
+    recurringIssues: ["Alta vigoria lato nord-est", "Filari in pendenza", "Finestre vento strette"],
+    nextAction: "Controllo vigoria entro 10 giorni",
+    interventions: [
+      { date: "2026-03-12", title: "Sopralluogo agronomico", result: "Confermata variabilità di vigoria" },
+      { date: "2026-03-21", title: "Trattamento fogliare", result: "Passaggio localizzato completato" },
+      { date: "2026-04-08", title: "Prescrizione VRA", result: "Mappa pronta per invio" }
+    ],
+    reports: ["RPT-014", "mappa-vigoria.geojson", "scheda-intervento.pdf"],
+    documentStatus: "Documenti principali presenti, liberatoria proprietario da aggiornare",
+    agronomicNotes: "La variabilità del campo richiede lettura multispettrale prima dei trattamenti principali."
+  },
+  {
+    fieldId: "MAI-022",
+    variety: "Mais da granella / pianura",
+    completeness: 72,
+    recurringIssues: ["Dose azoto non uniforme", "Rischio piralide", "Testate già performanti"],
+    nextAction: "Aggiornare piano azoto e finestra piralide",
+    interventions: [
+      { date: "2026-03-18", title: "Lancio insetti", result: "Copertura completa" },
+      { date: "2026-03-29", title: "Rinnovo SCIA", result: "In scadenza" },
+      { date: "2026-04-12", title: "Analisi NDRE", result: "In revisione" }
+    ],
+    reports: ["RPT-022", "registro-lancio.csv", "prescrizione-azoto.xlsx"],
+    documentStatus: "Autorizzazione da rinnovare prima della prossima missione",
+    agronomicNotes: "Conviene differenziare dose: rinforzare aree deboli e ridurre nelle testate."
+  },
+  {
+    fieldId: "FRT-009",
+    variety: "Frutteto misto / impianto a blocchi",
+    completeness: 84,
+    recurringIssues: ["Stress idrico in tre blocchi", "Copertura disomogenea", "Accesso nord stretto"],
+    nextAction: "Inviare report stress idrico al cliente",
+    interventions: [
+      { date: "2026-03-24", title: "Rilievo stress idrico", result: "Layer pronto" },
+      { date: "2026-04-03", title: "Documentazione operativa", result: "Da verificare" }
+    ],
+    reports: ["VRA-203", "foto-sopralluogo.jpg", "layer-stress-idrico.tif"],
+    documentStatus: "Documenti quasi completi, mancano particelle lato nord",
+    agronomicNotes: "Intervento localizzato consigliato solo sui blocchi in stress."
+  },
+  {
+    fieldId: "OLI-004",
+    variety: "Olivo / appezzamento collinare",
+    completeness: 61,
+    recurringIssues: ["Terreno tortuoso", "Finestra vento variabile", "VRA ancora in bozza"],
+    nextAction: "Controllo vento e aggiornamento mappa prima del passaggio",
+    interventions: [
+      { date: "2026-03-25", title: "Irrorazione pieno campo", result: "Quota venduta" },
+      { date: "2026-04-02", title: "Check vento", result: "Da ripetere" }
+    ],
+    reports: ["bozza-vra-olivo.pdf", "check-meteo.txt"],
+    documentStatus: "Scheda campo incompleta: aggiungere note accesso e foto",
+    agronomicNotes: "Drone preferibile al trattore nelle aree tortuose e dopo pioggia."
+  }
+];
+
+const weatherOperationalAlerts = [
+  { id: "MET-014", fieldId: "VIT-014", missionId: "MIS-014", wind: 9, rain: 1.2, temperature: 21, humidity: 58, driftRisk: "Basso", window: "Domani 06:30-09:30", status: "Operabile", message: "Vento entro soglia, intervento consigliato domani mattina.", priority: 1 },
+  { id: "MET-022", fieldId: "MAI-022", missionId: "MIS-022", wind: 16, rain: 6.4, temperature: 24, humidity: 72, driftRisk: "Medio", window: "Oggi 18:30-20:00", status: "Attenzione", message: "Pioggia prevista entro 12 ore, valutare anticipo.", priority: 2 },
+  { id: "MET-009", fieldId: "FRT-009", missionId: "", wind: 24, rain: 0.4, temperature: 27, humidity: 48, driftRisk: "Elevato", window: "Rivalutare tra 36 ore", status: "Non consigliato", message: "Rischio deriva elevato, trattamento sconsigliato.", priority: 3 },
+  { id: "MET-004", fieldId: "OLI-004", missionId: "", wind: 7, rain: 9.2, temperature: 18, humidity: 84, driftRisk: "Basso", window: "Dopodomani 07:00-10:00", status: "Attenzione", message: "Terreno bagnato: drone preferibile al trattore.", priority: 2 }
+];
+
+const economicSimulations = [
+  { fieldId: "VIT-014", traditionalCost: 118, droneCost: 96, standardDose: 280, vraDose: 246, productCost: 1.85 },
+  { fieldId: "MAI-022", traditionalCost: 92, droneCost: 78, standardDose: 350, vraDose: 301, productCost: 1.12 },
+  { fieldId: "FRT-009", traditionalCost: 126, droneCost: 104, standardDose: 240, vraDose: 210, productCost: 2.05 },
+  { fieldId: "OLI-004", traditionalCost: 134, droneCost: 112, standardDose: 190, vraDose: 168, productCost: 1.74 }
+];
+
+const vraAdvisorData = [
+  { fieldId: "VIT-014", status: "Pronta", high: 28, low: 19, normal: 53, standardDose: 280, vraDose: 246, saving: "-12,1%", recommendation: "Trattamento localizzato con dose variabile e riduzione nelle aree ad alta vigoria." },
+  { fieldId: "MAI-022", status: "In revisione", high: 22, low: 31, normal: 47, standardDose: 350, vraDose: 301, saving: "-14%", recommendation: "Concimazione a dose variabile: concentrare prodotto nelle zone deboli e ridurre sulle testate." },
+  { fieldId: "FRT-009", status: "Mappa disponibile", high: 18, low: 24, normal: 58, standardDose: 240, vraDose: 210, saving: "-12,5%", recommendation: "Intervento localizzato sui tre blocchi in stress idrico." },
+  { fieldId: "OLI-004", status: "Bozza", high: 16, low: 27, normal: 57, standardDose: 190, vraDose: 168, saving: "-11,6%", recommendation: "Completare mappa e programmare trattamento leggero nelle aree accessibili." }
+];
+
 const missionChecks = ["Drone", "Meteo", "Autorizzazioni", "DPI", "Prodotto", "Batterie"];
 const missions = [
   { id: "MIS-014", client: "Azienda Agricola Bianchi", field: "Vigneto Collina Est", position: "Valdobbiadene", hectares: 6.8, product: "Trattamento fogliare", material: "82 l", batteries: 5, time: "2h 20m", margin: "38%", status: "Da preparare", checks: ["Autorizzazioni"] },
@@ -232,6 +320,7 @@ function bindEvents() {
   });
   $("#filterToggle").addEventListener("click", () => {
     $("#filterBar").hidden = !$("#filterBar").hidden;
+    $("#filterToggle").setAttribute("aria-expanded", String(!$("#filterBar").hidden));
   });
   $("#cropFilter").addEventListener("change", (event) => { state.filters.crop = event.target.value; render(); });
   $("#statusFilter").addEventListener("change", (event) => { state.filters.status = event.target.value; render(); });
@@ -255,6 +344,13 @@ function bindEvents() {
     if (startMission) startMissionFlight(startMission.dataset.id);
     const predictiveReminder = event.target.closest?.(".js-add-predictive-reminder");
     if (predictiveReminder) createPredictiveReminder(predictiveReminder.dataset.id);
+    const passportButton = event.target.closest?.(".js-select-passport");
+    if (passportButton) {
+      state.passportId = passportButton.dataset.id;
+      render();
+    }
+    const advisorButton = event.target.closest?.(".js-generate-vra-explanation");
+    if (advisorButton) generateVraExplanation(advisorButton.dataset.id);
   });
   document.addEventListener("input", (event) => {
     if (event.target?.id === "fleetT100") {
@@ -263,6 +359,7 @@ function bindEvents() {
     }
     if (event.target?.id === "bookingTerrain" || event.target?.id === "bookingHectares") updateBookingPreview();
     if (event.target?.closest?.("#quoteForm")) updateQuotePreview();
+    if (event.target?.closest?.("#economicForm")) updateEconomicSimulation();
   });
   document.addEventListener("change", (event) => {
     if (event.target?.id === "capacityMonth") {
@@ -273,6 +370,10 @@ function bindEvents() {
     if (event.target?.closest?.("#quoteForm")) updateQuotePreview();
     if (event.target?.id === "waTemplate") updateWhatsAppPreview();
     if (event.target?.classList?.contains("mission-check")) updateMissionCheck(event.target);
+    if (event.target?.id === "economicField") {
+      state.economicField = event.target.value;
+      render();
+    }
   });
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") closeDrawer();
@@ -318,12 +419,16 @@ function render() {
   const views = {
     dashboard: renderDashboard,
     fields: renderFields,
+    passport: renderFieldPassport,
     permits: renderPermits,
+    weather: renderWeatherOperational,
     vra: renderVra,
+    advisor: renderVraAdvisor,
     capacity: renderCapacity,
     predictive: renderPredictiveCalendar,
     backend: renderBackend,
     quotes: renderQuotes,
+    simulator: renderEconomicSimulator,
     portal: renderPortal,
     whatsapp: renderWhatsApp,
     missions: renderMissions,
@@ -331,7 +436,9 @@ function render() {
     farmers: renderFarmers,
     reminders: renderReminders
   };
-  views[state.active]();
+  const view = views[state.active] || views.dashboard;
+  if (!views[state.active]) state.active = "dashboard";
+  view();
 }
 
 function renderMetrics() {
@@ -343,7 +450,7 @@ function renderMetrics() {
     ["Campi attivi", "42", "136,7 ettari gestiti", "sprout"],
     ["Autorizzazioni valide", "18", "2 in scadenza entro 7 giorni", "shield"],
     ["Mappe VRA", "11", "4 da consegnare oggi", "chart"],
-    ["Reminder aperti", "9", "3 ad alta priorita", "bell"]
+    ["Reminder aperti", "9", "3 ad alta priorità", "bell"]
   ].map(([label, value, detail, icon]) => `
     <article class="metric-card">
       <span class="metric-icon">${icons[icon]}</span>
@@ -355,7 +462,23 @@ function renderMetrics() {
 }
 
 function renderDashboard() {
+  const incompletePassports = fieldPassports.filter((passport) => passport.completeness < 75).length;
+  const weatherAlerts = weatherOperationalAlerts.filter((alert) => alert.status !== "Operabile").length;
+  const totalEstimatedSaving = economicSimulations.reduce((total, simulation) => {
+    const field = getFieldById(simulation.fieldId);
+    return total + calculateEconomicSimulation({ ...simulation, hectares: field?.hectares || 0 }).saving;
+  }, 0);
+  const vraToExplain = vraAdvisorData.filter((item) => item.status !== "Inviata").length;
   workspace.innerHTML = `
+    <section class="panel">
+      ${panelHead("Nuovi strumenti operativi", "Passaporti, meteo, simulazioni economiche e spiegazioni VRA", false)}
+      <div class="capacity-summary">
+        ${capacityStat("Passaporti incompleti", String(incompletePassports), "Campi con dati sotto il 75%")}
+        ${capacityStat("Allerte meteo", String(weatherAlerts), "Finestre da valutare prima del volo")}
+        ${capacityStat("Risparmio stimato", `${Math.round(totalEstimatedSaving)} EUR`, "Somma simulazioni campo per campo")}
+        ${capacityStat("VRA da spiegare", String(vraToExplain), "Mappe pronte da tradurre al cliente")}
+      </div>
+    </section>
     <section class="panel">
       ${panelHead("Vista rapida campi", "Stato autorizzazioni, coltura e avanzamento VRA", true)}
       ${fieldsTable(filterItems(fields))}
@@ -386,15 +509,50 @@ function renderFields() {
   bindExport();
 }
 
+function renderFieldPassport() {
+  const selected = getSelectedPassport();
+  workspace.innerHTML = `
+    <section class="panel">
+      ${panelHead("Passaporto digitale del campo", "Identità agronomica, documenti, storico e prossima azione", true)}
+      <div class="passport-layout">
+        <div class="passport-list">
+          ${fieldPassports.map(passportListItem).join("")}
+        </div>
+        ${passportDetail(selected)}
+      </div>
+    </section>
+  `;
+  bindExport();
+}
+
 function renderPermits() {
   const items = filterItems(permits);
   workspace.innerHTML = `
     <section class="panel">
-      ${panelHead("Gestione autorizzazioni", "Documenti, scadenze, stato e priorita", true)}
+      ${panelHead("Gestione autorizzazioni", "Documenti, scadenze, stato e priorità", true)}
       <div class="list-stack">${items.length ? items.map(permitItem).join("") : emptyState()}</div>
     </section>
   `;
   bindOpeners();
+  bindExport();
+}
+
+function renderWeatherOperational() {
+  const sortedWindows = [...weatherOperationalAlerts].sort((a, b) => a.priority - b.priority);
+  workspace.innerHTML = `
+    <section class="panel">
+      ${panelHead("Meteo operativo", "Decisioni di volo e trattamento basate su soglie operative mock", true)}
+      <div class="weather-grid">
+        ${weatherOperationalAlerts.map(weatherCard).join("")}
+      </div>
+    </section>
+    <section class="panel">
+      ${panelHead("Finestre operative migliori", "Priorità ordinate per campo, rischio deriva e pioggia prevista", false)}
+      <div class="list-stack">
+        ${sortedWindows.map(bestWeatherWindow).join("")}
+      </div>
+    </section>
+  `;
   bindExport();
 }
 
@@ -415,6 +573,18 @@ function renderVra() {
           <thead><tr><th>Azienda</th><th>Campo</th><th>Coltura</th><th>Uso normale</th><th>Uso con VRA</th><th>Risparmio</th><th>Agronomo</th></tr></thead>
           <tbody>${items.map((map) => `<tr><td>${map.client}</td><td>${map.field}</td><td>${map.crop}</td><td>${map.standard} kg/ha</td><td>${map.vra} kg/ha</td><td class="saving">${map.saving}</td><td>${map.agronomist}</td></tr>`).join("")}</tbody>
         </table>
+      </div>
+    </section>
+  `;
+  bindExport();
+}
+
+function renderVraAdvisor() {
+  workspace.innerHTML = `
+    <section class="panel">
+      ${panelHead("Consigliatore VRA semplice", "Traduce le mappe in messaggi chiari per il contadino", true)}
+      <div class="advisor-grid">
+        ${vraAdvisorData.map(vraAdvisorCard).join("")}
       </div>
     </section>
   `;
@@ -482,7 +652,7 @@ function renderCapacity() {
                 ${Object.entries(operationLabels).map(([key, label]) => `<option value="${key}">${label}</option>`).join("")}
               </select>
             </label>
-            <label>Difficolta terreno 1-10
+            <label>Difficoltà terreno 1-10
               <input name="terrainLevel" id="bookingTerrain" type="range" min="1" max="10" step="1" value="1" />
             </label>
             <label>Ettari da vendere <input name="hectares" id="bookingHectares" type="number" min="1" step="1" placeholder="Es. 25" required /></label>
@@ -517,11 +687,11 @@ function renderPredictiveCalendar() {
         ${capacityStat("Finestre prossime", String(nextSuggestions.length), "Suggerimenti ordinati per urgenza")}
         ${capacityStat("Lead caldi", String(urgentSuggestions), "Da contattare entro 15 giorni")}
         ${capacityStat("Colture coperte", String(new Set(predictiveWindows.map((rule) => rule.crop)).size), "Vite, mais, frutta, olivo e serre")}
-        ${capacityStat("Reminder generabili", String(suggestions.length), "Ogni card puo diventare promemoria commerciale")}
+        ${capacityStat("Reminder generabili", String(suggestions.length), "Ogni card può diventare promemoria commerciale")}
       </div>
     </section>
     <section class="panel">
-      ${panelHead("Prossime opportunita commerciali", "Messaggi e azioni pronte per azienda, campo e coltura", false)}
+      ${panelHead("Prossime opportunità commerciali", "Messaggi e azioni pronte per azienda, campo e coltura", false)}
       <div class="predictive-grid">
         ${nextSuggestions.map(predictiveCard).join("")}
       </div>
@@ -607,8 +777,8 @@ function renderQuotes() {
           ${quoteInput("Minimo uscita EUR", "minimumExit", quoteDefaults.minimumExit)}
           ${quoteInput("Distanza km", "distanceKm", quoteDefaults.distanceKm)}
           ${quoteInput("Urgenza %", "urgency", quoteDefaults.urgency)}
-          ${quoteInput("Complessita coltura %", "cropComplexity", quoteDefaults.cropComplexity)}
-          ${quoteInput("Complessita autorizzativa %", "authComplexity", quoteDefaults.authComplexity)}
+          ${quoteInput("Complessità coltura %", "cropComplexity", quoteDefaults.cropComplexity)}
+          ${quoteInput("Complessità autorizzativa %", "authComplexity", quoteDefaults.authComplexity)}
           ${quoteInput("Report / VRA / mapping EUR", "addOns", quoteDefaults.addOns)}
           ${quoteInput("Sconto pacchetto %", "seasonalDiscount", quoteDefaults.seasonalDiscount)}
           ${quoteInput("Costo variabile EUR/ha", "variableCost", quoteDefaults.variableCost)}
@@ -623,7 +793,7 @@ function renderQuotes() {
           <thead><tr><th>Cluster</th><th>Prezzo medio</th><th>Costo variabile</th><th>Margine</th><th>Nota</th></tr></thead>
           <tbody>
             <tr><td>Mais pianura</td><td>95 EUR/ha</td><td>38 EUR/ha</td><td class="saving">60%</td><td>Volume scalabile</td></tr>
-            <tr><td>Vite collinare</td><td>145 EUR/ha</td><td>66 EUR/ha</td><td class="saving">54%</td><td>Alta complessita</td></tr>
+            <tr><td>Vite collinare</td><td>145 EUR/ha</td><td>66 EUR/ha</td><td class="saving">54%</td><td>Alta complessità</td></tr>
             <tr><td>Frutta con mapping</td><td>132 EUR/ha</td><td>58 EUR/ha</td><td class="saving">56%</td><td>Report ad alto valore</td></tr>
           </tbody>
         </table>
@@ -631,6 +801,33 @@ function renderQuotes() {
     </section>
   `;
   updateQuotePreview();
+  bindExport();
+}
+
+function renderEconomicSimulator() {
+  const selected = getEconomicSimulation(state.economicField);
+  workspace.innerHTML = `
+    <section class="panel">
+      ${panelHead("Simulatore economico campo per campo", "Confronto vendita: metodo tradizionale, drone e VRA", true)}
+      <div class="simulator-layout">
+        <form class="economic-form" id="economicForm">
+          <label>Campo
+            <select id="economicField" name="fieldId">
+            ${fields.map((field) => `<option value="${escapeHtml(field.id)}" ${field.id === selected.fieldId ? "selected" : ""}>${escapeHtml(field.name)}</option>`).join("")}
+            </select>
+          </label>
+          ${economicInput("Ettari", "hectares", getFieldById(selected.fieldId)?.hectares || 1, "0.1")}
+          ${economicInput("Costo metodo tradizionale EUR/ha", "traditionalCost", selected.traditionalCost)}
+          ${economicInput("Costo drone EUR/ha", "droneCost", selected.droneCost)}
+          ${economicInput("Dose standard kg o litri/ha", "standardDose", selected.standardDose)}
+          ${economicInput("Dose VRA kg o litri/ha", "vraDose", selected.vraDose)}
+          ${economicInput("Costo prodotto EUR/unità", "productCost", selected.productCost, "0.01")}
+        </form>
+        <aside class="simulator-result" id="economicResult"></aside>
+      </div>
+    </section>
+  `;
+  updateEconomicSimulation();
   bindExport();
 }
 
@@ -897,6 +1094,106 @@ function flowCard(icon, title, text) {
   return `<article class="flow-card">${icons[icon]}<h3>${title}</h3><p>${text}</p></article>`;
 }
 
+function passportListItem(passport) {
+  const field = getFieldById(passport.fieldId);
+  const active = state.passportId === passport.fieldId;
+  return `
+    <button class="passport-item js-select-passport ${active ? "active" : ""}" data-id="${passport.fieldId}" type="button">
+      <span><strong>${field.name}</strong><small>${field.id} / ${field.crop} / ${field.city}</small></span>
+      <span class="passport-score">${passport.completeness}%</span>
+    </button>
+  `;
+}
+
+function passportDetail(passport) {
+  const field = getFieldById(passport.fieldId);
+  const fieldPermits = permits.filter((permit) => permit.field === field.name || permit.client === field.client);
+  const fieldVra = vraMaps.filter((map) => map.field === field.name);
+  return `
+    <article class="passport-detail">
+      <div class="panel-head" style="margin:0 0 14px">
+        <div>
+          <p class="panel-subtitle">${field.client}</p>
+          <h2>${field.name} — dati completi al ${passport.completeness}%</h2>
+          <p class="muted">${field.id} / ${passport.variety} / ${field.city}</p>
+        </div>
+        ${pill(field.auth)}
+      </div>
+      <div class="passport-completeness"><span style="width:${passport.completeness}%"></span></div>
+      <div class="passport-grid">
+        ${passportFact("Proprietario", field.owner)}
+        ${passportFact("Coltura", field.crop)}
+        ${passportFact("Superficie", `${field.hectares} ha`)}
+        ${passportFact("Comune", field.city)}
+        ${passportFact("Ultima mappa VRA", fieldVra[0]?.status || field.vra)}
+        ${passportFact("Prossima azione", passport.nextAction)}
+      </div>
+      <div class="passport-columns">
+        <div>
+          <h3>Timeline interventi</h3>
+          <div class="timeline">${passport.interventions.map((item) => `<div><span>${formatDate(item.date)}</span><strong>${item.title}</strong><p>${item.result}</p></div>`).join("")}</div>
+        </div>
+        <div>
+          <h3>Documenti e criticità</h3>
+          <p class="form-note">${passport.documentStatus}</p>
+          <div class="pill-row">${passport.reports.map((doc) => `<span class="pill blue">${doc}</span>`).join("")}</div>
+          <div class="pill-row">${fieldPermits.map((permit) => `<span class="pill warn">${permit.id}</span>`).join("")}</div>
+          <h3>Criticità ricorrenti</h3>
+          <ul class="compact-list">${passport.recurringIssues.map((issue) => `<li>${issue}</li>`).join("")}</ul>
+        </div>
+      </div>
+      <div class="vra-analysis"><h3>Note agronomiche</h3><p>${passport.agronomicNotes}</p></div>
+    </article>
+  `;
+}
+
+function passportFact(label, value) {
+  return `<div class="mini-stat compact"><span>${label}</span><strong>${value}</strong></div>`;
+}
+
+function weatherCard(alert) {
+  const field = getFieldById(alert.fieldId);
+  return `
+    <article class="weather-card">
+      <div class="panel-head" style="margin:0 0 12px">
+        <div><h3>${field.name}</h3><p class="muted">${field.client} / ${field.city}</p></div>
+        ${weatherBadge(alert.status)}
+      </div>
+      <div class="weather-kpis">
+        ${weatherKpi("Vento", `${alert.wind} km/h`)}
+        ${weatherKpi("Pioggia", `${alert.rain} mm`)}
+        ${weatherKpi("Temperatura", `${alert.temperature}°C`)}
+        ${weatherKpi("Umidità", `${alert.humidity}%`)}
+      </div>
+      <div class="highlight-box">
+        <span class="muted">Rischio deriva</span><br><strong>${alert.driftRisk}</strong>
+      </div>
+      <p class="predictive-message">${alert.message}</p>
+      <p class="form-note">Finestra consigliata: <strong>${alert.window}</strong></p>
+    </article>
+  `;
+}
+
+function weatherKpi(label, value) {
+  return `<div class="mini-stat compact"><span>${label}</span><strong>${value}</strong></div>`;
+}
+
+function weatherBadge(status) {
+  const tone = status === "Operabile" ? "ok" : status === "Attenzione" ? "warn" : "danger";
+  return `<span class="pill ${tone}">${status}</span>`;
+}
+
+function bestWeatherWindow(alert) {
+  const field = getFieldById(alert.fieldId);
+  return `
+    <div class="list-item">
+      <span><h3>${field.name}</h3><span class="muted">${alert.window} / ${field.crop}</span></span>
+      <span class="highlight-box"><span class="muted">Messaggio operativo</span><br><strong>${alert.message}</strong></span>
+      ${weatherBadge(alert.status)}
+    </div>
+  `;
+}
+
 function predictiveCard(item) {
   return `
     <article class="predictive-card">
@@ -943,6 +1240,10 @@ function quoteInput(label, name, value) {
   return `<label>${label}<input name="${name}" type="number" step="1" value="${value}" /></label>`;
 }
 
+function economicInput(label, name, value, step = "1") {
+  return `<label>${label}<input name="${name}" type="number" min="0" step="${step}" value="${value}" /></label>`;
+}
+
 function getQuoteValues() {
   const form = $("#quoteForm");
   const values = form ? Object.fromEntries(new FormData(form).entries()) : quoteDefaults;
@@ -971,7 +1272,68 @@ function updateQuotePreview() {
       ${capacityStat("Margine atteso", `${margin} EUR`, `${marginRate}% sul preventivo`)}
       ${capacityStat("Break-even", `${breakEvenHa} ha`, "Superficie minima stimata")}
     </div>
-    <p class="form-note">Formula: prezzo base + minimo uscita + distanza + urgenza + complessita coltura/autorizzativa + report/VRA - sconto stagionale.</p>
+    <p class="form-note">Formula: prezzo base + minimo uscita + distanza + urgenza + complessità coltura/autorizzativa + report/VRA - sconto stagionale.</p>
+  `;
+}
+
+function getEconomicValues() {
+  const selected = getEconomicSimulation(state.economicField);
+  const field = getFieldById(selected.fieldId);
+  const defaults = {
+    fieldId: selected.fieldId,
+    hectares: field.hectares,
+    traditionalCost: selected.traditionalCost,
+    droneCost: selected.droneCost,
+    standardDose: selected.standardDose,
+    vraDose: selected.vraDose,
+    productCost: selected.productCost
+  };
+  const form = $("#economicForm");
+  if (!form?.elements) return defaults;
+  return {
+    fieldId: form.elements.fieldId?.value || defaults.fieldId,
+    hectares: Number(form.elements.hectares?.value || defaults.hectares),
+    traditionalCost: Number(form.elements.traditionalCost?.value || defaults.traditionalCost),
+    droneCost: Number(form.elements.droneCost?.value || defaults.droneCost),
+    standardDose: Number(form.elements.standardDose?.value || defaults.standardDose),
+    vraDose: Number(form.elements.vraDose?.value || defaults.vraDose),
+    productCost: Number(form.elements.productCost?.value || defaults.productCost)
+  };
+}
+
+function calculateEconomicSimulation(values) {
+  const hectares = Number(values.hectares || 0);
+  const traditionalOperation = hectares * Number(values.traditionalCost || 0);
+  const droneOperation = hectares * Number(values.droneCost || 0);
+  const standardProductCost = hectares * Number(values.standardDose || 0) * Number(values.productCost || 0);
+  const vraProductCost = hectares * Number(values.vraDose || 0) * Number(values.productCost || 0);
+  const traditionalTotal = Math.round(traditionalOperation + standardProductCost);
+  const vraTotal = Math.round(droneOperation + vraProductCost);
+  const savedProduct = Math.max(0, (Number(values.standardDose || 0) - Number(values.vraDose || 0)) * hectares);
+  const saving = Math.round(traditionalTotal - vraTotal);
+  const savingRate = traditionalTotal ? Math.round((saving / traditionalTotal) * 1000) / 10 : 0;
+  const perHectare = hectares ? Math.round((saving / hectares) * 10) / 10 : 0;
+  return { traditionalTotal, vraTotal, savedProduct, saving, savingRate, perHectare };
+}
+
+function updateEconomicSimulation() {
+  const target = $("#economicResult");
+  if (!target) return;
+  const values = getEconomicValues();
+  const field = getFieldById(values.fieldId);
+  const result = calculateEconomicSimulation(values);
+  const doseDelta = Math.max(0, values.standardDose - values.vraDose);
+  const doseRate = values.standardDose ? Math.round((doseDelta / values.standardDose) * 1000) / 10 : 0;
+  target.innerHTML = `
+    <p class="spaced-label">Risultato campo</p>
+    <h2>${result.saving} EUR</h2>
+    <div class="quote-kpis">
+      ${capacityStat("Metodo tradizionale", `${result.traditionalTotal} EUR`, `${values.hectares} ha / prodotto standard`)}
+      ${capacityStat("Drone + VRA", `${result.vraTotal} EUR`, "Intervento mirato e dose variabile")}
+      ${capacityStat("Prodotto risparmiato", `${Math.round(result.savedProduct)} unità`, `${doseDelta} per ha evitati`)}
+      ${capacityStat("Differenza per ettaro", `${result.perHectare} EUR/ha`, `${result.savingRate}% di risparmio`)}
+    </div>
+    <p class="form-note">Con metodo VRA puoi ridurre l'utilizzo di prodotto di ${doseDelta} kg/ha, pari a circa il ${doseRate}%. Risparmio stimato sul campo ${field.name}: ${result.saving} EUR. Il drone è conveniente perché evita passaggi inutili e concentra il trattamento dove serve.</p>
   `;
 }
 
@@ -1018,6 +1380,50 @@ function vraSavingsChart(map) {
       <p class="vra-chart-note">Risparmio stimato: <strong>${Math.round(kg)} kg</strong> di input e <strong>${map.seasonSavingEur} EUR</strong> sulla stagione.</p>
     </article>
   `;
+}
+
+function vraAdvisorCard(item) {
+  const field = getFieldById(item.fieldId);
+  return `
+    <article class="advisor-card">
+      <div class="panel-head" style="margin:0 0 12px">
+        <div><h3>${field.name}</h3><p class="muted">${field.client} / ${field.crop}</p></div>
+        ${pill(item.status)}
+      </div>
+      <div class="vra-zone-bar">
+        <span class="high" style="width:${item.high}%"></span>
+        <span class="normal" style="width:${item.normal}%"></span>
+        <span class="low" style="width:${item.low}%"></span>
+      </div>
+      <div class="advisor-zones">
+        ${advisorZone("Alta vigoria", item.high, "Riduci dose")}
+        ${advisorZone("Area normale", item.normal, "Mantieni dose")}
+        ${advisorZone("Bassa vigoria", item.low, "Concentra intervento")}
+      </div>
+      <div class="vra-kpi-grid">
+        ${vraKpi("Dose standard", `${item.standardDose} kg/ha`)}
+        ${vraKpi("Dose VRA", `${item.vraDose} kg/ha`)}
+        ${vraKpi("Risparmio", item.saving)}
+        ${vraKpi("Campo", `${field.hectares} ha`)}
+      </div>
+      <p class="vra-copy">${item.recommendation}</p>
+      <button class="btn primary js-generate-vra-explanation" data-id="${item.fieldId}" type="button">${icons.phone} Genera spiegazione semplice</button>
+      <div class="advisor-explanation" id="advisorExplanation-${item.fieldId}" hidden></div>
+    </article>
+  `;
+}
+
+function advisorZone(label, percent, text) {
+  return `<div><strong>${percent}%</strong><span>${label}</span><small>${text}</small></div>`;
+}
+
+function generateVraExplanation(fieldId) {
+  const item = vraAdvisorData.find((entry) => entry.fieldId === fieldId);
+  const field = getFieldById(fieldId);
+  const target = $(`#advisorExplanation-${fieldId}`);
+  if (!item || !target) return;
+  target.hidden = false;
+  target.textContent = `Il campo ${field.name} non è uniforme. Il ${item.high}% della superficie ha vigoria alta: qui puoi ridurre la dose. Il ${item.low}% ha vigoria bassa: qui conviene concentrare l'intervento. Intervento consigliato: ${item.recommendation} Risparmio stimato: ${item.saving} di prodotto.`;
 }
 
 function vraBar(label, value, max) {
@@ -1330,6 +1736,18 @@ function sumHectares(items) {
 
 function fieldHectaresByName(name) {
   return Number(fields.find((field) => field.name === name)?.hectares || 1);
+}
+
+function getFieldById(id) {
+  return fields.find((field) => field.id === id) || fields[0];
+}
+
+function getSelectedPassport() {
+  return fieldPassports.find((passport) => passport.fieldId === state.passportId) || fieldPassports[0];
+}
+
+function getEconomicSimulation(fieldId) {
+  return economicSimulations.find((simulation) => simulation.fieldId === fieldId) || economicSimulations[0];
 }
 
 function parseSavingKg(saving) {
@@ -1753,7 +2171,7 @@ function bindExport() {
 }
 
 function exportCurrent() {
-  const datasets = { dashboard: fields, fields, permits, vra: vraMaps, capacity: bookings, backend: bookings, quotes: [getQuoteValues()], portal: fields, whatsapp: Object.values(whatsappTemplates).map((message, index) => ({ id: index + 1, message })), missions, reports: missionReports, farmers, reminders };
+  const datasets = { dashboard: fields, fields, passport: fieldPassports, permits, weather: weatherOperationalAlerts, vra: vraMaps, advisor: vraAdvisorData, capacity: bookings, predictive: buildPredictiveSuggestions(), backend: bookings, quotes: [getQuoteValues()], simulator: [getEconomicValues()], portal: fields, whatsapp: Object.values(whatsappTemplates).map((message, index) => ({ id: index + 1, message })), missions, reports: missionReports, farmers, reminders };
   const rows = filterItems(datasets[state.active] || fields);
   const csv = toCsv(rows);
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });

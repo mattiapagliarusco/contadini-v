@@ -573,6 +573,155 @@ tr:last-child td { border-bottom: 0; }
   margin: 4px 0 0;
   font-weight: 900;
 }
+.passport-layout,
+.simulator-layout {
+  display: grid;
+  grid-template-columns: minmax(260px, 340px) minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+.passport-list { display: grid; gap: 10px; }
+.passport-item {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid #e7eee8;
+  border-radius: 14px;
+  color: var(--ink);
+  background: white;
+  text-align: left;
+}
+.passport-item small {
+  display: block;
+  margin-top: 5px;
+  color: var(--muted);
+  font-weight: 750;
+}
+.passport-item.active {
+  border-color: #c7e9b8;
+  background: var(--wash);
+}
+.passport-score {
+  display: grid;
+  place-items: center;
+  min-width: 52px;
+  height: 34px;
+  border-radius: 17px;
+  color: #08795a;
+  background: #eafff5;
+  font-weight: 900;
+}
+.passport-detail,
+.weather-card,
+.advisor-card,
+.simulator-result {
+  padding: 20px;
+  border: 1px solid #e7eee8;
+  border-radius: 18px;
+  background: white;
+  box-shadow: 0 10px 22px rgba(6,51,31,.04);
+}
+.passport-completeness {
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #eaf2e8;
+  margin-bottom: 16px;
+}
+.passport-completeness span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #18a65d, #d9d957);
+}
+.passport-grid,
+.weather-kpis,
+.advisor-zones {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(130px, 1fr));
+  gap: 10px;
+}
+.passport-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 18px;
+  margin: 18px 0;
+}
+.timeline {
+  display: grid;
+  gap: 10px;
+}
+.timeline div {
+  padding: 12px;
+  border-left: 4px solid #93b600;
+  border-radius: 10px;
+  background: var(--wash);
+}
+.timeline span,
+.timeline p,
+.compact-list {
+  color: var(--muted);
+}
+.timeline strong { display: block; margin: 4px 0; }
+.compact-list { margin: 8px 0 0; padding-left: 18px; line-height: 1.55; }
+.weather-grid,
+.advisor-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(260px, 1fr));
+  gap: 16px;
+}
+.economic-form {
+  display: grid;
+  gap: 13px;
+  padding: 18px;
+  border: 1px solid #e7efc8;
+  border-radius: 18px;
+  background: var(--wash);
+}
+.economic-form label {
+  display: grid;
+  gap: 7px;
+  color: var(--ink-soft);
+  font-weight: 750;
+}
+.simulator-result h2 {
+  margin: 6px 0 16px;
+  font-size: 2.25rem;
+}
+.vra-zone-bar {
+  height: 16px;
+  display: flex;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #eaf2e8;
+  margin: 12px 0 14px;
+}
+.vra-zone-bar span { display: block; height: 100%; }
+.vra-zone-bar .high { background: #d9d957; }
+.vra-zone-bar .normal { background: #18a65d; }
+.vra-zone-bar .low { background: #4d91d9; }
+.advisor-zones div {
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--wash);
+}
+.advisor-zones strong,
+.advisor-zones span,
+.advisor-zones small {
+  display: block;
+}
+.advisor-zones small { margin-top: 4px; color: var(--muted); }
+.advisor-explanation {
+  margin-top: 14px;
+  padding: 14px;
+  border: 1px solid #c8f2e4;
+  border-radius: 12px;
+  color: var(--ink);
+  background: #eafff5;
+  line-height: 1.45;
+}
 .season-grid {
   display: grid;
   grid-template-columns: repeat(5, minmax(160px, 1fr));
@@ -1101,7 +1250,8 @@ tr:last-child td { border-bottom: 0; }
   .capacity-layout { grid-template-columns: 1fr; }
   .admin-layout { grid-template-columns: 1fr; }
   .quote-layout, .whatsapp-layout { grid-template-columns: 1fr; }
-  .portal-grid, .admin-grid, .report-grid, .admin-forms, .vra-board, .vra-chart-grid, .predictive-grid, .season-grid { grid-template-columns: repeat(2, minmax(220px, 1fr)); }
+  .portal-grid, .admin-grid, .report-grid, .admin-forms, .vra-board, .vra-chart-grid, .predictive-grid, .season-grid, .weather-grid, .advisor-grid, .passport-grid, .passport-columns, .weather-kpis, .advisor-zones { grid-template-columns: repeat(2, minmax(220px, 1fr)); }
+  .passport-layout, .simulator-layout { grid-template-columns: 1fr; }
   .booking-box { position: static; }
 }
 
@@ -1120,7 +1270,7 @@ tr:last-child td { border-bottom: 0; }
   .segmented-control { width: 100%; display: grid; grid-template-columns: repeat(3, 1fr); }
   .fleet-panel { display: grid; }
   .fleet-panel label { min-width: 0; }
-  .metrics, .card-grid, .flow-grid, .profile-grid, .form-grid, .capacity-controls, .capacity-summary, .quote-form, .portal-grid, .admin-grid, .report-grid, .admin-forms, .permit-form, .mission-grid, .vra-board, .vra-media-grid, .vra-kpi-grid, .vra-chart-grid, .predictive-grid, .predictive-meta, .season-grid { grid-template-columns: 1fr; }
+  .metrics, .card-grid, .flow-grid, .profile-grid, .form-grid, .capacity-controls, .capacity-summary, .quote-form, .portal-grid, .admin-grid, .report-grid, .admin-forms, .permit-form, .mission-grid, .vra-board, .vra-media-grid, .vra-kpi-grid, .vra-chart-grid, .predictive-grid, .predictive-meta, .season-grid, .passport-layout, .simulator-layout, .passport-grid, .passport-columns, .weather-grid, .weather-kpis, .advisor-grid, .advisor-zones { grid-template-columns: 1fr; }
   .vra-bar-row { grid-template-columns: 1fr; }
   .permit-form .wide { grid-column: auto; }
   .calendar-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
