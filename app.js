@@ -30,26 +30,51 @@ const state = {
   }
 };
 
-const navItems = [
-  ["dashboard", "Dashboard", "dashboard"],
-  ["fields", "Campi", "sprout"],
-  ["passport", "Passaporto Campo", "shield"],
-  ["permits", "Autorizzazioni", "shield"],
-  ["weather", "Meteo Operativo", "calendar"],
-  ["vra", "VRA", "chart"],
-  ["advisor", "Consigliatore VRA", "chart"],
-  ["capacity", "Capienza annua", "calendar"],
-  ["predictive", "Calendario predittivo", "calendar"],
-  ["backend", "Backend admin", "shield"],
-  ["quotes", "Preventivi", "chart"],
-  ["simulator", "Simulatore", "chart"],
-  ["sustainability", "Sostenibilità", "chart"],
-  ["portal", "Il mio campo", "user"],
-  ["whatsapp", "WhatsApp", "phone"],
-  ["missions", "Mission Control", "drone"],
-  ["reports", "Report", "calendar"],
-  ["farmers", "Contadini", "users"],
-  ["reminders", "Reminder", "bell"]
+const navGroups = [
+  { label: "", items: [["dashboard", "Dashboard", "dashboard"]] },
+  {
+    label: "Aziende & Campi",
+    items: [
+      ["farmers", "Contadini", "users"],
+      ["fields", "Campi", "sprout"],
+      ["passport", "Passaporto Campo", "shield"],
+      ["portal", "Il mio campo", "user"]
+    ]
+  },
+  {
+    label: "Operazioni",
+    items: [
+      ["missions", "Mission Control", "drone"],
+      ["weather", "Meteo Operativo", "calendar"],
+      ["capacity", "Capienza annua", "calendar"],
+      ["predictive", "Calendario predittivo", "calendar"],
+      ["reminders", "Reminder", "bell"]
+    ]
+  },
+  {
+    label: "Precision Farming",
+    items: [
+      ["vra", "VRA", "chart"],
+      ["advisor", "Consigliatore VRA", "chart"],
+      ["simulator", "Simulatore", "chart"],
+      ["sustainability", "Sostenibilità", "chart"]
+    ]
+  },
+  {
+    label: "Vendite & Comunicazioni",
+    items: [
+      ["quotes", "Preventivi", "chart"],
+      ["whatsapp", "WhatsApp", "phone"],
+      ["reports", "Report", "calendar"]
+    ]
+  },
+  {
+    label: "Admin & Compliance",
+    items: [
+      ["permits", "Autorizzazioni", "shield"],
+      ["backend", "Backend admin", "shield"]
+    ]
+  }
 ];
 
 const fields = [
@@ -404,10 +429,15 @@ async function logout() {
 }
 
 function renderNav() {
-  $("#navList").innerHTML = navItems.map(([key, label, icon]) => `
-    <button class="nav-item ${state.active === key ? "active" : ""}" type="button" data-view="${key}">
-      ${icons[icon]}<span>${label}</span>
-    </button>
+  $("#navList").innerHTML = navGroups.map((group, index) => `
+    <div class="nav-group ${index === 0 ? "is-primary" : ""}">
+      ${group.label ? `<p class="nav-group-label">${group.label}</p>` : ""}
+      ${group.items.map(([key, label, icon]) => `
+        <button class="nav-item ${state.active === key ? "active" : ""}" type="button" data-view="${key}" ${state.active === key ? 'aria-current="page"' : ""}>
+          ${icons[icon]}<span>${label}</span>
+        </button>
+      `).join("")}
+    </div>
   `).join("");
   document.querySelectorAll("[data-view]").forEach((button) => {
     button.addEventListener("click", () => {
